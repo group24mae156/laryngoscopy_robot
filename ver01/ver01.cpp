@@ -117,6 +117,9 @@ cFontPtr font;
 // a label to display the rate [Hz] at which the simulation is running
 cLabel* labelRates;
 
+// a label to display position axes
+cLabel* labelAxes;
+
 // a flag for using damping (ON/OFF)
 bool useDamping = false;
 
@@ -382,27 +385,6 @@ int main(int argc, char* argv[])
 
 
     //--------------------------------------------------------------------------
-    // WIDGETS
-    //--------------------------------------------------------------------------
-
-    // create a font
-    font = NEW_CFONTCALIBRI20();
-
-    // create a label to display the haptic device model
-    labelHapticDeviceModel = new cLabel(font);
-    camera->m_frontLayer->addChild(labelHapticDeviceModel);
-    labelHapticDeviceModel->setText(info.m_modelName);
-
-    // create a label to display the position of haptic device
-    labelHapticDevicePosition = new cLabel(font);
-    camera->m_frontLayer->addChild(labelHapticDevicePosition);
-    
-    // create a label to display the haptic and graphic rate of the simulation
-    labelRates = new cLabel(font);
-    camera->m_frontLayer->addChild(labelRates);
-
-
-	//--------------------------------------------------------------------------
     // CREATE PLANE
     //--------------------------------------------------------------------------
 	
@@ -413,13 +395,45 @@ int main(int argc, char* argv[])
     world->addChild(plane);
 
     // create plane primitive
-    cCreateMap(plane, 3.0, 3.0, 20, 20);
+    cCreateMap(plane, 5, 5, 10, 10);
 
     // compile object
     plane->setUseDisplayList(true);
 
     // set color properties
-    plane->m_material->setWhite();
+    plane->m_material->setGreen();
+
+
+    //--------------------------------------------------------------------------
+    // WIDGETS
+    //--------------------------------------------------------------------------
+
+    // create a font
+    font = NEW_CFONTCALIBRI32();
+
+    // create a label to display the haptic device model
+    labelHapticDeviceModel = new cLabel(font);
+    labelHapticDeviceModel->m_fontColor.setBlack();
+    labelHapticDeviceModel->setText(info.m_modelName);
+    camera->m_frontLayer->addChild(labelHapticDeviceModel);
+    
+    // create a label for coordinate axes
+    labelAxes = new cLabel(font);
+    labelAxes->m_fontColor.setBlack();
+    labelAxes->setText("X Axis  Y Axis   Z Axis");
+    camera->m_frontLayer->addChild(labelAxes);
+
+    // create a label to display the position of haptic device
+    labelHapticDevicePosition = new cLabel(font);
+    labelHapticDevicePosition->m_fontColor.setBlack();
+    camera->m_frontLayer->addChild(labelHapticDevicePosition);
+    
+    // create a label to display the haptic and graphic rate of the simulation
+    labelRates = new cLabel(font);
+    camera->m_frontLayer->addChild(labelRates);
+
+
+	
 
 
     //--------------------------------------------------------------------------
@@ -482,7 +496,10 @@ void windowSizeCallback(GLFWwindow* a_window, int a_width, int a_height)
     labelHapticDeviceModel->setLocalPos(20, height - 40, 0);
 
     // update position of label
-    labelHapticDevicePosition->setLocalPos(20, height - 60, 0);
+    labelHapticDevicePosition->setLocalPos(20, height - 100, 0);
+
+    // update position of axes
+    labelAxes->setLocalPos(20, height - 70, 0);
 }
 
 //------------------------------------------------------------------------------
