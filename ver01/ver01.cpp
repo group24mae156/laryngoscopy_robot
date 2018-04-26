@@ -35,16 +35,16 @@
     ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
     POSSIBILITY OF SUCH DAMAGE. 
 
-    \author    <http://www.chai3d.org>
-    \author    Francois Conti
-    \version   3.2.0 $Rev: 1869 $
+    \author         <http://www.chai3d.org>
+    \author         Francois Conti
+    \modified by    Michael Berger
+    \version        3.2.0 $Rev: 1869 $
 */
 //==============================================================================
 
 //------------------------------------------------------------------------------
 #include "chai3d.h"
 #if defined(C_ENABLE_WOODEN_DEVICE_SUPPORT)
-//#include "devices/CWoodenDevice.h"
 #include "devices/CAluminumDevice.h"
 #endif
 //------------------------------------------------------------------------------
@@ -100,6 +100,7 @@ cShapeLine* lineBC;
 cHapticDeviceHandler* handler;
 
 // a pointer to the current haptic device
+//cGenericHapticDevicePtr hapticDevice;
 cGenericHapticDevicePtr hapticDevice;
 
 // a label to display the haptic device model
@@ -118,7 +119,16 @@ cFontPtr font;
 cLabel* labelRates;
 
 // a label to display position axes
-cLabel* labelAxes;
+cLabel* labelPosAxes;
+
+// a global variable to store the forces [N] on the haptic device
+cVector3d hapticDeviceForces;
+
+// a label to display forces at joint
+cLabel* labelForces;
+
+//a label to display force axes
+cLabel* labelForcesAxes;
 
 // a flag for using damping (ON/OFF)
 bool useDamping = false;
@@ -131,6 +141,9 @@ bool simulationRunning = false;
 
 // a flag to indicate if the haptic simulation has terminated
 bool simulationFinished = true;
+
+// a flag for trajectory creation (ON/OFF)
+bool useRecording = false;
 
 // a frequency counter to measure the simulation graphic rate
 cFrequencyCounter freqCounterGraphics;
@@ -152,6 +165,9 @@ int height = 0;
 
 // swap interval for the display context (vertical synchronization)
 int swapInterval = 1;
+
+// a vector representing origin
+cVector3d original;// {0,0,0};
 
 
 //------------------------------------------------------------------------------
@@ -338,14 +354,15 @@ int main(int argc, char* argv[])
 	cursorB = new cShapeSphere(0.03);
     cursorC = new cShapeSphere(0.03);
     
-    // // create a line
-     lineAB = new cShapeLine(cursorA, cursorB);
-    // lineBC = new cShapeLine(cursorB, cursorC);
-
     // insert cursor inside world
     world->addChild(cursorA);
 	world->addChild(cursorB);
     world->addChild(cursorC);
+
+    // // create a line
+    //lineAB = new cShapeLine(cursorA, cursorB);
+    lineAB = new cShapeLine(cVector3d(0,0,0), cVector3d(0,0,0));
+    // lineBC = new cShapeLine(cursorB, cursorC);
 
     // // inserts line connecting cursor inside world
      world->addChild(lineAB);
@@ -361,6 +378,9 @@ int main(int argc, char* argv[])
      lineAB->m_colorPointB.setBlack();
     // lineBC->m_colorPointA.setBlack();
     // lineBC->m_colorPointB.setBlack();
+
+    // line properties
+    lineAB->setLineWidth(0.01);
     
 
 
@@ -383,6 +403,14 @@ int main(int argc, char* argv[])
     // retrieve information about the current haptic device
     cHapticDeviceInfo info = hapticDevice->getSpecifications();
 
+    // sets initial position of cursors currently broken
+    //hapticDevice->enableAutoUpdate();
+    //hapticDevice->getPosition(original);
+    //hapticDevice->setPosition(0,0,0);
+    //hapticDevice->disableAutoUpdate();
+    // cursorA->setLocalPos(0,-0.5,0);
+    // cursorB->setLocalPos(0,-0.45,0);
+    // cursorC->setLocalPos(0,-0.4,0);
 
     //--------------------------------------------------------------------------
     // CREATE PLANE
@@ -417,11 +445,22 @@ int main(int argc, char* argv[])
     labelHapticDeviceModel->setText(info.m_modelName);
     camera->m_frontLayer->addChild(labelHapticDeviceModel);
     
-    // create a label for coordinate axes
-    labelAxes = new cLabel(font);
-    labelAxes->m_fontColor.setBlack();
-    labelAxes->setText("X Axis  Y Axis   Z Axis");
-    camera->m_frontLayer->addChild(labelAxes);
+    // create a label for pos axes
+    labelPosAxes = new cLabel(font);
+    labelPosAxes->m_fontColor.setBlack();
+    labelPosAxes->setText("X Pos  Y Pos   Z Pos");
+    camera->m_frontLayer->addChild(labelPosAxes);
+
+    // create a label for pos axes
+    labelForcesAxes = new cLabel(font);
+    labelForcesAxes->m_fontColor.setBlack();
+    labelForcesAxes->setText("X Force Y Force Z Force");
+    camera->m_frontLayer->addChild(labelForcesAxes);
+
+    // create a label to display the forces on haptic device
+    labelForces = new cLabel(font);
+    labelForces->m_fontColor.setBlack();
+    camera->m_frontLayer->addChild(labelForces);
 
     // create a label to display the position of haptic device
     labelHapticDevicePosition = new cLabel(font);
@@ -498,8 +537,14 @@ void windowSizeCallback(GLFWwindow* a_window, int a_width, int a_height)
     // update position of label
     labelHapticDevicePosition->setLocalPos(20, height - 100, 0);
 
-    // update position of axes
-    labelAxes->setLocalPos(20, height - 70, 0);
+    // update position of pos axes label
+    labelPosAxes->setLocalPos(20, height - 70, 0);
+    
+    //update position of force axes label
+    labelForcesAxes->setLocalPos(width - 260, height - 70, 0);
+
+    // update position of force label
+    labelForces->setLocalPos(width - 260, height - 100, 0);
 }
 
 //------------------------------------------------------------------------------
@@ -619,7 +664,8 @@ void updateGraphics(void)
     // update position of label
     labelRates->setLocalPos((int)(0.5 * (width - labelRates->getWidth())), 15);
 
-
+    // update force data
+    labelForces->setText(hapticDeviceForces.str(3));
 
     /////////////////////////////////////////////////////////////////////
     // WOODENHAPTICS DEBUG INFO
@@ -661,7 +707,7 @@ void updateHaptics(void)
     // simulation in now running
     simulationRunning  = true;
     simulationFinished = false;
-
+    cVector3d position;
     // main haptic simulation loop
     while(simulationRunning)
     {
@@ -672,11 +718,14 @@ void updateHaptics(void)
         // update position and orientation of cursor 
         cVector3d position;
         hapticDevice->getPosition(position);
-        cursorA->setLocalPos(0.45,.14,0.365);
+        // yellow
+        cursorA->setLocalPos(0.0,0);
         //cursorA->setLocalRot(rotation);
+        // blue
         cursorB->setLocalPos(position);
         //cursorC->setLocalRot(rotation);
-        cursorC->setLocalPos(position);
+        // orange
+        cursorC->setLocalPos(0,0,0);
         //cursorC->setLocalRot(rotation);
 
         // read orientation 
@@ -704,18 +753,19 @@ void updateHaptics(void)
         // // UPDATE 3D CURSOR MODEL
         // /////////////////////////////////////////////////////////////////////
        
-        // // update arrow
-        // velocity->m_pointA = position;
-        // velocity->m_pointB = cAdd(position, linearVelocity);
+        // update line
+        //lineAB->m_pointA = position;
+        //cVector3d offSetVec (0,0,0);
+        //offSetVec = position;
+        //lineAB->m_pointB = cAdd(position, offSetVec);
 
         // // update position and orientation of cursor
         // cursor->setLocalPos(position);
         // cursor->setLocalRot(rotation);
 
-        // // update global variable for graphic display update
-         hapticDevicePosition = position;
-
-
+        // update global variable for graphic display update
+        hapticDevicePosition = position;
+       
         /////////////////////////////////////////////////////////////////////
         // COMPUTE AND APPLY FORCES
         /////////////////////////////////////////////////////////////////////
@@ -739,7 +789,7 @@ void updateHaptics(void)
             // compute linear force
             double Kp = 25; // [N/m]
             cVector3d forceField = Kp * (desiredPosition - position);
-            //force.add(forceField);
+            force.add(forceField);
 
             // compute angular torque
             //double Kr = 0.05; // [N/m.rad]
@@ -769,9 +819,11 @@ void updateHaptics(void)
             //double Kvg = 1.0 * info.m_maxGripperAngularDamping;
             //gripperForce = gripperForce - Kvg * gripperAngularVelocity;
         }
+        // update global variable for graphic display update
+         hapticDeviceForces = force;
 
         // send computed force, torque, and gripper force to haptic device
-        hapticDevice->setForceAndTorqueAndGripperForce(force, torque, gripperForce);
+        //hapticDevice->setForceAndTorqueAndGripperForce(force, torque, gripperForce);
 
         // signal frequency counter
         freqCounterHaptics.signal(1);
