@@ -334,9 +334,9 @@ int main(int argc, char* argv[])
     light->setDir(-1.0, 0.0, 0.0);
 
     // create a sphere (cursor) to represent the haptic device
-    cursorA = new cShapeSphere(0.01);
-	cursorB = new cShapeSphere(0.012);
-    cursorC = new cShapeSphere(0.014);
+    cursorA = new cShapeSphere(0.03);
+	cursorB = new cShapeSphere(0.03);
+    cursorC = new cShapeSphere(0.03);
     
     // // create a line
      lineAB = new cShapeLine(cursorA, cursorB);
@@ -352,7 +352,7 @@ int main(int argc, char* argv[])
     // world->addChild(lineBC);
     
    	// set cursor colors
-    cursorA->m_material->setGreenMediumAquamarine(); 
+    cursorA->m_material->setYellow();//setGreenMediumAquamarine(); 
     cursorB->m_material->setOrangeCoral();
     cursorC->m_material->setBlueRoyal();
 
@@ -672,7 +672,7 @@ void updateHaptics(void)
         // update position and orientation of cursor 
         cVector3d position;
         hapticDevice->getPosition(position);
-        cursorA->setLocalPos(position);
+        cursorA->setLocalPos(0.45,.14,0.365);
         //cursorA->setLocalRot(rotation);
         cursorB->setLocalPos(position);
         //cursorC->setLocalRot(rotation);
