@@ -259,9 +259,11 @@ void write_config_file(const cWoodenDevice::configuration& config, unsigned int 
     }
 
     std::cout << "Writing configuration to: "<< homedir 
-              << "/aluminumhapticsArm" << std::to_string(number) <<".json" << std::endl;
+              //<< "/aluminumhapticsArm" << std::to_string(number) <<".json" << std::endl;
+              << "/aluminumhapticsArm.json" << std::endl;
     std::ofstream ofile;
-    ofile.open(std::string(homedir) + "/aluminumhapticsArm" + std::to_string(number) + ".json");
+    //ofile.open(std::string(homedir) + "/aluminumhapticsArm" + std::to_string(number) + ".json");
+    ofile.open(std::string(homedir) + "/aluminumhapticsArm.json");
     ofile << toJSON(config);
     ofile.close();
 }
@@ -273,10 +275,12 @@ cWoodenDevice::configuration read_config_file( unsigned int number ){
     }
 
     std::cout << "Trying loading configuration from: "<< homedir 
-              << "/aluminumhapticsArm" << std::to_string(number) <<".json" << std::endl;
+              //<< "/aluminumhapticsArm" << std::to_string(number) <<".json" << std::endl;
+            << "/aluminumhapticsArm.json" << std::endl;
 
     std::ifstream ifile;
-    ifile.open(std::string(homedir) + "/aluminumhapticsArm" + std::to_string(number) + ".json");
+    //ifile.open(std::string(homedir) + "/aluminumhapticsArm" + std::to_string(number) + ".json");
+    ifile.open(std::string(homedir) + "/aluminumhapticsArm.json");
     if(ifile.is_open()){
         std::stringstream buffer;
         buffer << ifile.rdbuf();
@@ -836,7 +840,7 @@ unsigned int cWoodenDevice::getNumDevices()
 
     // *** INSERT YOUR CODE HERE, MODIFY CODE BELLOW ACCORDINGLY ***
 
-    int numberOfDevices = 2;  // At least set to 1 if a device is available.
+    int numberOfDevices = 1;  // At least set to 1 if a device is available.
 
     // numberOfDevices = getNumberOfDevicesConnectedToTheComputer();
 
