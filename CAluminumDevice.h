@@ -35,9 +35,9 @@
     ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
     POSSIBILITY OF SUCH DAMAGE. 
 
-    \author    <http://www.chai3d.org>
-    \author    Your name, institution, or company name.
-    \version   3.0.0 $Rev: 1242 $
+    \author         <http://www.chai3d.org>
+    \modified by    Michael Berger
+    \version        3.0.0 $Rev: 1242 $
 */
 //==============================================================================
 
@@ -70,8 +70,8 @@ namespace chai3d {
 //==============================================================================
 
 //------------------------------------------------------------------------------
-class cWoodenDevice;
-typedef std::shared_ptr<cWoodenDevice> cWoodenDevicePtr;
+class cAluminumDevice;
+typedef std::shared_ptr<cAluminumDevice> cAluminumDevicePtr;
 
 
 // Our 12*4=48 byte message (used both up and down)
@@ -115,14 +115,14 @@ struct pc_to_hid_message {  // 4*2 = 8 bytes
 
 //==============================================================================
 /*!
-    \class      cWoodenDevice
+    \class      cAluminumDevice
     \ingroup    devices  
 
     \brief
     Interface to custom haptic devices (template).
 
     \details
-    cWoodenDevice provides a basic template which allows to very easily
+    cAluminumDevice provides a basic template which allows to very easily
     interface CHAI3D to your own custom haptic device. \n\n
 
     Simply follow the 11 commented step in file CWoodenDevice.cpp 
@@ -139,7 +139,7 @@ struct pc_to_hid_message {  // 4*2 = 8 bytes
     Please consult method update() of the cHapticDeviceHandler class
     that is located in file CHapticDeviceHandler.cpp .
     Simply see how the haptic device handler already looks for
-    device of type cWoodenDevice.\n\n
+    device of type cAluminumDevice.\n\n
 
     If you are encountering any problems with your implementation, check 
     for instance file cDeltaDevices.cpp which implement supports for the 
@@ -157,21 +157,21 @@ struct pc_to_hid_message {  // 4*2 = 8 bytes
     instance.\n
 */
 //==============================================================================
-class cWoodenDevice : public cGenericHapticDevice
+class cAluminumDevice : public cGenericHapticDevice
 {
     //--------------------------------------------------------------------------
     // CONSTRUCTOR & DESTRUCTOR:
     //--------------------------------------------------------------------------
 
 public:
-    //! Constructor of cWoodenDevice.
-    cWoodenDevice(unsigned int a_deviceNumber = 0);
+    //! Constructor of cAluminumDevice.
+    cAluminumDevice(unsigned int a_deviceNumber = 0);
 
-    //! Destructor of cWoodenDevice.
-    virtual ~cWoodenDevice();
+    //! Destructor of cAluminumDevice.
+    virtual ~cAluminumDevice();
 
-    //! Shared cWoodenDevice allocator.
-    static cWoodenDevicePtr create(unsigned int a_deviceNumber = 0) { return (std::make_shared<cWoodenDevice>(a_deviceNumber)); }
+    //! Shared cAluminumDevice allocator.
+    static cAluminumDevicePtr create(unsigned int a_deviceNumber = 0) { return (std::make_shared<cAluminumDevice>(a_deviceNumber)); }
 
 
     //--------------------------------------------------------------------------
@@ -214,6 +214,11 @@ public:
                                                incoming_msg.temperature_1,
                                                incoming_msg.temperature_2);}
 
+    //! This method enables the device to update the position of connected devices
+    virtual bool enableAutoUpdate();
+    
+    //! This method disables the device to update the position of connected devices
+    virtual bool disableAutoUpdate();
 
     //--------------------------------------------------------------------------
     // PUBLIC STATIC METHODS:
@@ -297,7 +302,9 @@ public:
     int deviceNumber = 0;
 
 protected:
-    
+    // true if device should update the position of connected devices (rather than the user)
+	bool autoUpdate = false;
+
     const configuration m_config;
 
     cVector3d torqueSignals;
@@ -365,7 +372,7 @@ public:
         }
 
 
-        std::string config_toJSON(const cWoodenDevice::configuration& c){
+        std::string config_toJSON(const cAluminumDevice::configuration& c){
            using namespace std;
            stringstream json;
            json << "{" << endl
@@ -434,6 +441,8 @@ public:
         s.latest_motor_torques = latest_motor_torques;
     }
 };
+
+
 
 //------------------------------------------------------------------------------
 }       // namespace chai3d
