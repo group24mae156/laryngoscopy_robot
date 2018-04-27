@@ -118,6 +118,9 @@
 */
 ////////////////////////////////////////////////////////////////////////////////
 
+// global variable made for trajectory creation
+int passNumberofLines;
+
 //------------------------------------------------------------------------------
 namespace chai3d {
 //------------------------------------------------------------------------------
@@ -719,25 +722,21 @@ bool cAluminumDevice::close()
     myfile.open ("log.m");
     int lines = timestamp.size() < forces.size() ? timestamp.size() : forces.size();
     lines = positions.size() < lines ? positions.size() : lines;
-    string channel[] = {"force_x=[","force_y=[","force_z=[","timestamp=[","pos_x=[","pos_y=[","pos_z=["};
-    for(int c=0;c<7;++c){
-        myfile << channel[c];
+    //string channel[] = {"force_x=[","force_y=[","force_z=[","timestamp=[","pos_x=[","pos_y=[","pos_z=["};
+    for(int c=4;c<7;++c){
+        //myfile << channel[c];
         for(int i=0;i<lines;++i){
-            if(c==0) myfile << forces[i].x();
-            if(c==1) myfile << forces[i].y();
-            if(c==2) myfile << forces[i].z();
-            if(c==3) myfile << timestamp[i]*0.000001;
             if(c==4) myfile << positions[i].x()*1000;
             if(c==5) myfile << positions[i].y()*1000;
             if(c==6) myfile << positions[i].z()*1000;
             myfile << " ";
         }
-        myfile << "];\n";
+        myfile << "\n";
+        //myfile << "];\n";
     }
     myfile.close();
+    passNumberofLines = lines;
 #endif
-
-
 
     bool result = C_SUCCESS; // if the operation fails, set value to C_ERROR.
 

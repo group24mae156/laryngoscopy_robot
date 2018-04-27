@@ -61,6 +61,7 @@ using namespace std;
 #include <unistd.h>
 #include <sys/types.h>
 #include <pwd.h>
+#include <string>
 
 //------------------------------------------------------------------------------
 
@@ -155,7 +156,10 @@ bool simulationRunning = false;
 bool simulationFinished = true;
 
 // a flag for trajectory creation (ON/OFF)
-bool useRecording = false;
+bool useRecording = true;
+
+// a flag for trajectory pathway (ON/OFF)
+bool useTrajectory = true;
 
 // a frequency counter to measure the simulation graphic rate
 cFrequencyCounter freqCounterGraphics;
@@ -181,11 +185,6 @@ int swapInterval = 1;
 // a vector representing origin
 cVector3d original;// {0,0,0};
 
-// name of file trajectory will be pulled from
-string filename = "log.m";
-
-// variable to store file
-FILE * trajectoryFile;
 //------------------------------------------------------------------------------
 // DECLARED FUNCTIONS
 //------------------------------------------------------------------------------
@@ -245,23 +244,7 @@ int main(int argc, char* argv[])
     cout << "[q] - Exit application" << endl;
     cout << endl << endl;
 
-    // open file
-    const char *homedir;
 
-    if ((homedir = getenv("HOME")) == NULL) {
-
-        homedir = getpwuid(getuid())->pw_dir;
-
-    }
-    
-    filename = string(homedir) + "/" + filename;
-	trajectoryFile = fopen( filename.c_str(), "ab" );
-	
-    // prints error to consol  if file not found
-	if (trajectoryFile == NULL)
-	{
-		perror( filename.c_str() );
-	}
     //--------------------------------------------------------------------------
     // OPENGL - WINDOW DISPLAY
     //--------------------------------------------------------------------------
@@ -402,6 +385,8 @@ int main(int argc, char* argv[])
     guidePath->setLineWidth(4.0);
     // use display list for faster rendering
     guidePath->setUseDisplayList(true);
+    // position object
+    //guidePath->setLocalPos(0.22,-0.22, 0.0);
 
     // // create a line
     //lineAB = new cShapeLine(cursorA, cursorB);
@@ -538,6 +523,55 @@ int main(int argc, char* argv[])
     // call window size callback at initialization
     windowSizeCallback(window, width, height);
 
+    // open and load trajectory file
+    const char *homedir;
+
+    if ((homedir = getenv("HOME")) == NULL) {
+
+        homedir = getpwuid(getuid())->pw_dir;
+
+    }
+    if (useTrajectory){
+    string filename = "log.m";
+    ifstream trajectoryFile;
+    trajectoryFile.open(string(homedir) + "/" + filename);
+    if (trajectoryFile.fail()) {
+        cerr << "Error Opening Trajectory File" <<endl;
+        exit(1);
+    }
+    double xPoint;
+    double yPoint;
+    double zPoint;
+    double xPoint_0 = 0;
+    double yPoint_0 = 0;
+    double zPoint_0 = 0;
+    // need to fix
+    int passNumberofLines = 5;
+    for(int c=4;c<7;++c){
+        for(int i=0;i<passNumberofLines;++i){
+            if (c==4) trajectoryFile >> xPoint;
+            if (c==5) trajectoryFile >> yPoint;
+            if (c==6) trajectoryFile >> zPoint;
+            // create vertex 0
+            int index0 = guidePath->newVertex(xPoint_0, yPoint_0, zPoint_0);
+            
+            // create vertex 1
+            int index1 = guidePath->newVertex(xPoint, yPoint, zPoint);
+
+            // create segment by connecting both vertices together
+            guidePath->newSegment(index0, index1);
+
+            //update old segments
+            xPoint_0 = xPoint;
+            yPoint_0 = yPoint;
+            zPoint_0 = zPoint;
+            cout << xPoint << " " << yPoint << " " << zPoint << endl;
+       }
+    }
+     //0.465,0.016,0.365
+    trajectoryFile.close();
+}   
+
     // main graphic loop
     while (!glfwWindowShouldClose(window))
     {
@@ -556,6 +590,8 @@ int main(int argc, char* argv[])
         // signal frequency counter
         freqCounterGraphics.signal(1);
     }
+
+    
 
     // close window
     glfwDestroyWindow(window);
