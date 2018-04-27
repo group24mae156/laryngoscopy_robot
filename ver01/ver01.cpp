@@ -53,6 +53,15 @@
 using namespace chai3d;
 using namespace std;
 
+// Following includes are only used for reading/writing config file and to find 
+// the user's home directory (where the config file will be stored)
+#include <iostream>
+#include <fstream> 
+#include <sstream>
+#include <unistd.h>
+#include <sys/types.h>
+#include <pwd.h>
+
 //------------------------------------------------------------------------------
 
 //------------------------------------------------------------------------------
@@ -99,9 +108,12 @@ cShapeLine* lineBC;
 // a haptic device handler
 cHapticDeviceHandler* handler;
 
+// create a line segment object
+cMultiSegment* guidePath = new cMultiSegment();
+
 // a pointer to the current haptic device
-//cGenericHapticDevicePtr hapticDevice;
 cGenericHapticDevicePtr hapticDevice;
+//cAluminumDevicePtr hapticDevice;
 
 // a label to display the haptic device model
 cLabel* labelHapticDeviceModel;
@@ -169,7 +181,11 @@ int swapInterval = 1;
 // a vector representing origin
 cVector3d original;// {0,0,0};
 
+// name of file trajectory will be pulled from
+string filename = "log.m";
 
+// variable to store file
+FILE * trajectoryFile;
 //------------------------------------------------------------------------------
 // DECLARED FUNCTIONS
 //------------------------------------------------------------------------------
@@ -229,7 +245,23 @@ int main(int argc, char* argv[])
     cout << "[q] - Exit application" << endl;
     cout << endl << endl;
 
+    // open file
+    const char *homedir;
 
+    if ((homedir = getenv("HOME")) == NULL) {
+
+        homedir = getpwuid(getuid())->pw_dir;
+
+    }
+    
+    filename = string(homedir) + "/" + filename;
+	trajectoryFile = fopen( filename.c_str(), "ab" );
+	
+    // prints error to consol  if file not found
+	if (trajectoryFile == NULL)
+	{
+		perror( filename.c_str() );
+	}
     //--------------------------------------------------------------------------
     // OPENGL - WINDOW DISPLAY
     //--------------------------------------------------------------------------
@@ -358,6 +390,18 @@ int main(int argc, char* argv[])
     world->addChild(cursorA);
 	world->addChild(cursorB);
     world->addChild(cursorC);
+
+    // add guide path trajectory into world
+    world->addChild(guidePath);
+
+    // assign color properties
+    cColorf color;
+    color.setYellowGold();
+    guidePath->setLineColor(color);
+    // assign line width
+    guidePath->setLineWidth(4.0);
+    // use display list for faster rendering
+    guidePath->setUseDisplayList(true);
 
     // // create a line
     //lineAB = new cShapeLine(cursorA, cursorB);
@@ -671,8 +715,8 @@ void updateGraphics(void)
     // WOODENHAPTICS DEBUG INFO
     /////////////////////////////////////////////////////////////////////
 #if defined(C_ENABLE_WOODEN_DEVICE_SUPPORT)
-    if(cWoodenDevice* w = dynamic_cast<cWoodenDevice*>(hapticDevice.get())){
-        cWoodenDevice::woodenhaptics_status s = w->getStatus();
+    if(cAluminumDevice* w = dynamic_cast<cAluminumDevice*>(hapticDevice.get())){
+        cAluminumDevice::woodenhaptics_status s = w->getStatus();
         //std::cout << s.toJSON() << std::endl;
     }
 #endif
