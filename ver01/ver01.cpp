@@ -26,7 +26,7 @@
     "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
     LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
     FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
-    COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+    COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,z
     INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
     BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
     LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
@@ -35,7 +35,7 @@
     ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
     POSSIBILITY OF SUCH DAMAGE. 
 
-    \author         <http://www.chai3d.org>
+    \author    <http://www.chai3d.org>
     \author         Francois Conti
     \modified by    Michael Berger
     \version        3.2.0 $Rev: 1869 $
@@ -44,8 +44,10 @@
 
 //------------------------------------------------------------------------------
 #include "chai3d.h"
-#if defined(C_ENABLE_WOODEN_DEVICE_SUPPORT)
+#if defined(C_ENABLE_ALUMINUM_DEVICE_SUPPORT)
+//#undef C_ENABLE_TEACHING_DEVICE_SUPPORT
 #include "devices/CAluminumDevice.h"
+//#include "src/devices/CAluminumDevice.h"
 #endif
 //------------------------------------------------------------------------------
 #include <GLFW/glfw3.h>
@@ -114,7 +116,6 @@ cMultiSegment* guidePath = new cMultiSegment();
 
 // a pointer to the current haptic device
 cGenericHapticDevicePtr hapticDevice;
-//cAluminumDevicePtr hapticDevice;
 
 // a label to display the haptic device model
 cLabel* labelHapticDeviceModel;
@@ -147,7 +148,7 @@ cLabel* labelForcesAxes;
 bool useDamping = false;
 
 // a flag for using force field (ON/OFF)
-bool useForceField = true;
+bool useForceField = false;
 
 // a flag to indicate if the haptic simulation currently running
 bool simulationRunning = false;
@@ -159,7 +160,7 @@ bool simulationFinished = true;
 bool useRecording = true;
 
 // a flag for trajectory pathway (ON/OFF)
-bool useTrajectory = true;
+bool useTrajectory = false;
 
 // a frequency counter to measure the simulation graphic rate
 cFrequencyCounter freqCounterGraphics;
@@ -184,6 +185,7 @@ int swapInterval = 1;
 
 // a vector representing origin
 cVector3d original;// {0,0,0};
+
 
 //------------------------------------------------------------------------------
 // DECLARED FUNCTIONS
@@ -242,6 +244,8 @@ int main(int argc, char* argv[])
     cout << "[f] - Enable/Disable full screen mode" << endl;
     cout << "[m] - Enable/Disable vertical mirroring" << endl;
     cout << "[q] - Exit application" << endl;
+    // print trajectory file size, but broken
+    //cout << std::string(passNumberofLines) << endl;
     cout << endl << endl;
 
 
@@ -249,7 +253,7 @@ int main(int argc, char* argv[])
     // OPENGL - WINDOW DISPLAY
     //--------------------------------------------------------------------------
 
-    // initialize GLFW library
+   // initialize GLFW library
     if (!glfwInit())
     {
         cout << "failed initialization" << endl;
@@ -410,7 +414,6 @@ int main(int argc, char* argv[])
 
     // line properties
     lineAB->setLineWidth(0.01);
-    
 
 
     //--------------------------------------------------------------------------
@@ -567,6 +570,7 @@ int main(int argc, char* argv[])
             zPoint_0 = zPoint;
             cout << xPoint << " " << yPoint << " " << zPoint << endl;
        }
+       //trajectoryFile >> "\n";
     }
      //0.465,0.016,0.365
     trajectoryFile.close();
@@ -750,9 +754,10 @@ void updateGraphics(void)
     /////////////////////////////////////////////////////////////////////
     // WOODENHAPTICS DEBUG INFO
     /////////////////////////////////////////////////////////////////////
-#if defined(C_ENABLE_WOODEN_DEVICE_SUPPORT)
-    if(cAluminumDevice* w = dynamic_cast<cAluminumDevice*>(hapticDevice.get())){
-        cAluminumDevice::woodenhaptics_status s = w->getStatus();
+
+#if defined(C_ENABLE_ALUMINUM_DEVICE_SUPPORT)
+    if(cWoodenDevice* w = dynamic_cast<cWoodenDevice*>(hapticDevice.get())){
+        cWoodenDevice::aluminumhaptics_status s = w->getStatus();
         //std::cout << s.toJSON() << std::endl;
     }
 #endif
@@ -914,3 +919,5 @@ void updateHaptics(void)
 }
 
 //------------------------------------------------------------------------------
+
+

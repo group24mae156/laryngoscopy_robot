@@ -35,17 +35,17 @@
     ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
     POSSIBILITY OF SUCH DAMAGE. 
 
-    \author         <http://www.chai3d.org>
+    \author    <http://www.chai3d.org>
     \modified by    Michael Berger
-    \version        3.0.0 $Rev: 1242 $
+    \version   3.0.0 $Rev: 1242 $
 */
 //==============================================================================
 
 //------------------------------------------------------------------------------
-#ifndef CAluminumDeviceH
-#define CAluminumDeviceH
+#ifndef CWoodenDeviceH
+#define CWoodenDeviceH
 //------------------------------------------------------------------------------
-#if defined(C_ENABLE_WOODEN_DEVICE_SUPPORT)
+#if defined(C_ENABLE_ALUMINUM_DEVICE_SUPPORT)
 //------------------------------------------------------------------------------
 #include "devices/CGenericHapticDevice.h"
 #include "hidapi.h"
@@ -58,7 +58,8 @@
 //------------------------------------------------------------------------------
 namespace chai3d {
 //------------------------------------------------------------------------------
-
+// global variable made for trajectory creation
+    extern int passNumberofLines;
 //==============================================================================
 /*!
     \file       CCAluminumDeviceH
@@ -70,12 +71,12 @@ namespace chai3d {
 //==============================================================================
 
 //------------------------------------------------------------------------------
-class cAluminumDevice;
-typedef std::shared_ptr<cAluminumDevice> cAluminumDevicePtr;
+class cWoodenDevice;
+typedef std::shared_ptr<cWoodenDevice> cWoodenDevicePtr;
 
 
 // Our 12*4=48 byte message (used both up and down)
-struct woodenhaptics_message {
+struct aluminumhaptics_message {
     float position_x;
     float position_y;
     float position_z;
@@ -89,7 +90,7 @@ struct woodenhaptics_message {
     float temperature_1;
     float temperature_2;
 
-    woodenhaptics_message():position_x(0),position_y(0),position_z(0),
+    aluminumhaptics_message():position_x(0),position_y(0),position_z(0),
                             command_force_x(0),command_force_y(0),command_force_z(0),
                             actual_current_0(0),actual_current_1(0),actual_current_2(0),
                             temperature_0(0),temperature_1(0),temperature_2(0){}
@@ -125,7 +126,7 @@ struct pc_to_hid_message {  // 4*2 = 8 bytes
     cAluminumDevice provides a basic template which allows to very easily
     interface CHAI3D to your own custom haptic device. \n\n
 
-    Simply follow the 11 commented step in file CWoodenDevice.cpp 
+    Simply follow the 11 commented step in file CAluminumDevice.cpp 
     and complete the code accordingly.
     Depending of the numbers of degrees of freedom of your device, not
     all methods need to be implemented. For instance, if your device
@@ -148,7 +149,7 @@ struct pc_to_hid_message {  // 4*2 = 8 bytes
     demo to verify how basic haptic effects may behave with you haptic
     devices. If you do encounter vibrations or instabilities, try reducing
     the maximum stiffness and/or damping values supported by your device. 
-    (see STEP-1 in file CWoodenDevice.cpp).\n
+    (see STEP-1 in file CAluminumDevice.cpp).\n
     
     Make  sure that your device is also communicating fast enough with 
     your computer. Ideally the communication period should take less 
@@ -157,21 +158,21 @@ struct pc_to_hid_message {  // 4*2 = 8 bytes
     instance.\n
 */
 //==============================================================================
-class cAluminumDevice : public cGenericHapticDevice
+class cWoodenDevice : public cGenericHapticDevice
 {
     //--------------------------------------------------------------------------
     // CONSTRUCTOR & DESTRUCTOR:
     //--------------------------------------------------------------------------
 
 public:
-    //! Constructor of cAluminumDevice.
-    cAluminumDevice(unsigned int a_deviceNumber = 0);
+    //! Constructor of cWoodenDevice.
+    cWoodenDevice(unsigned int a_deviceNumber = 0);
 
-    //! Destructor of cAluminumDevice.
-    virtual ~cAluminumDevice();
+    //! Destructor of cWoodenDevice.
+    virtual ~cWoodenDevice();
 
-    //! Shared cAluminumDevice allocator.
-    static cAluminumDevicePtr create(unsigned int a_deviceNumber = 0) { return (std::make_shared<cAluminumDevice>(a_deviceNumber)); }
+    //! Shared cWoodenDevice allocator.
+    static cWoodenDevicePtr create(unsigned int a_deviceNumber = 0) { return (std::make_shared<cWoodenDevice>(a_deviceNumber)); }
 
 
     //--------------------------------------------------------------------------
@@ -208,17 +209,12 @@ public:
     virtual bool getUserSwitch(int a_switchIndex, bool& a_status);
 
 
-    //! Public methods to read special info from the wooden device (for developers)
+    //! Public methods to read special info from the aluminum device (for developers)
     cVector3d getTorqueSignals() { return torqueSignals; }
     cVector3d getEncoders() { return cVector3d(incoming_msg.temperature_0,
                                                incoming_msg.temperature_1,
                                                incoming_msg.temperature_2);}
 
-    //! This method enables the device to update the position of connected devices
-    virtual bool enableAutoUpdate();
-    
-    //! This method disables the device to update the position of connected devices
-    virtual bool disableAutoUpdate();
 
     //--------------------------------------------------------------------------
     // PUBLIC STATIC METHODS:
@@ -229,12 +225,12 @@ public:
     //! Returns the number of devices available from this class of device.
     static unsigned int getNumDevices();
 
-    //! A collection of variables that can be set in ~/aluminum_device.json 
+    //! A collection of variables that can be set in ~/aluminum_haptics.json 
     struct configuration {
-        double offset_angle;            // rad (orientation of base)
-        double angle_1;                 // rad (angle of base from default "front facing")
-        double angle_2;                 // rad (angle of link 2 from default "upright")
-        double angle_3;                 // rad (angle of link 3 from default "straight")
+		double offset_angle;            // rad (orientation of base)
+		double angle_1;                 // rad (angle of base from default "front facing")
+		double angle_2;                 // rad (angle of link 2 from default "upright")
+		double angle_3;                 // rad (angle of link 3 from default "straight")
         double variant;                 // 0=WoodenHaptics default, 1=AluHaptics
         double diameter_capstan_a;      // m
         double diameter_capstan_b;      // m
@@ -279,7 +275,7 @@ public:
           cpr_encoder_c(k[20]), max_linear_force(k[21]), max_linear_stiffness(k[22]),
           max_linear_damping(k[23]), mass_body_b(k[24]), mass_body_c(k[25]),
           length_cm_body_b(k[26]), length_cm_body_c(k[27]), g_constant(k[28]), 
-          angle_1(k[29]), angle_2(k[30]), angle_3(k[31]), offset_angle(k[32]){}
+		  angle_1(k[29]), angle_2(k[30]), angle_3(k[31]), offset_angle(k[32]){}
 
         configuration(){}
     };
@@ -300,17 +296,16 @@ public:
 
     int lost_messages;
     int deviceNumber = 0;
+    
 
 protected:
-    // true if device should update the position of connected devices (rather than the user)
-	bool autoUpdate = false;
-
+	
     const configuration m_config;
 
     cVector3d torqueSignals;
 
-    woodenhaptics_message incoming_msg;
-    woodenhaptics_message outgoing_msg;
+    aluminumhaptics_message incoming_msg;
+    aluminumhaptics_message outgoing_msg;
 
     hid_to_pc_message hid_to_pc;
     pc_to_hid_message pc_to_hid;
@@ -348,7 +343,7 @@ public:
 
 
 
-    struct woodenhaptics_status {
+    struct aluminumhaptics_status {
         hid_to_pc_message latest_hid_to_pc;
         pc_to_hid_message latest_pc_to_hid;
         configuration config;
@@ -372,7 +367,7 @@ public:
         }
 
 
-        std::string config_toJSON(const cAluminumDevice::configuration& c){
+        std::string config_toJSON(const cWoodenDevice::configuration& c){
            using namespace std;
            stringstream json;
            json << "{" << endl
@@ -431,8 +426,8 @@ public:
         }
     };
 
-    woodenhaptics_status getStatus() {
-        woodenhaptics_status s;
+    aluminumhaptics_status getStatus() {
+        aluminumhaptics_status s;
         s.latest_hid_to_pc = hid_to_pc;
         s.latest_pc_to_hid = pc_to_hid;
         s.config = m_config;
@@ -442,12 +437,10 @@ public:
     }
 };
 
-
-
 //------------------------------------------------------------------------------
 }       // namespace chai3d
 //------------------------------------------------------------------------------
-#endif  // C_ENABLE_WOODEN_DEVICE_SUPPORT
+#endif  // C_ENABLE_ALUMINUM_DEVICE_SUPPORT
 //------------------------------------------------------------------------------
 #endif
 //------------------------------------------------------------------------------
