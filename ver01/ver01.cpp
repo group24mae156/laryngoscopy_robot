@@ -47,7 +47,7 @@
 #if defined(C_ENABLE_ALUMINUM_DEVICE_SUPPORT)
 //#undef C_ENABLE_TEACHING_DEVICE_SUPPORT
 #include "devices/CAluminumDevice.h"
-//#include "src/devices/CAluminumDevice.h"
+//#include "system/CGlobals.h"
 #endif
 //------------------------------------------------------------------------------
 #include <GLFW/glfw3.h>
@@ -64,7 +64,6 @@ using namespace std;
 #include <sys/types.h>
 #include <pwd.h>
 #include <string>
-
 //------------------------------------------------------------------------------
 
 //------------------------------------------------------------------------------
@@ -102,12 +101,7 @@ cDirectionalLight *light;
 
 // a small sphere (cursor) representing the haptic device 
 cShapeSphere* cursorA; 
-cShapeSphere* cursorB;
-cShapeSphere* cursorC;
-// line representing material connecting joints of arm
-cShapeLine* lineAB;
-cShapeLine* lineBC;
- 
+
 // a haptic device handler
 cHapticDeviceHandler* handler;
 
@@ -148,7 +142,7 @@ cLabel* labelForcesAxes;
 bool useDamping = false;
 
 // a flag for using force field (ON/OFF)
-bool useForceField = false;
+bool useForceField = true;
 
 // a flag to indicate if the haptic simulation currently running
 bool simulationRunning = false;
@@ -157,10 +151,10 @@ bool simulationRunning = false;
 bool simulationFinished = true;
 
 // a flag for trajectory creation (ON/OFF)
-bool useRecording = true;
+bool useRecording = false;
 
 // a flag for trajectory pathway (ON/OFF)
-bool useTrajectory = false;
+bool useTrajectory = true;
 
 // a frequency counter to measure the simulation graphic rate
 cFrequencyCounter freqCounterGraphics;
@@ -185,6 +179,9 @@ int swapInterval = 1;
 
 // a vector representing origin
 cVector3d original;// {0,0,0};
+
+// create a line segment object
+cMultiSegment* segments = new cMultiSegment();
 
 
 //------------------------------------------------------------------------------
@@ -338,9 +335,14 @@ int main(int argc, char* argv[])
     camera = new cCamera(world);
     world->addChild(camera);
 
-    // position and orient the camera
+    // position and orient the camera front view
     camera->set( cVector3d (0.0, 0.0, 0.375),    // camera position (eye)
                  cVector3d (1.0, 0.0, 0.375),    // look at position (target)
+                 cVector3d (0.0, 0.0, 1.0));   // direction of the (up) vector
+
+                 // position and orient the camera side view
+    camera->set( cVector3d (0.5, -0.5, 0.25),    // camera position (eye)
+                 cVector3d (0.5, 0.0, 0.375),    // look at position (target)
                  cVector3d (0.0, 0.0, 1.0));   // direction of the (up) vector
 
     // set the near and far clipping planes of the camera
@@ -369,14 +371,10 @@ int main(int argc, char* argv[])
     light->setDir(-1.0, 0.0, 0.0);
 
     // create a sphere (cursor) to represent the haptic device
-    cursorA = new cShapeSphere(0.03);
-	cursorB = new cShapeSphere(0.03);
-    cursorC = new cShapeSphere(0.03);
+    cursorA = new cShapeSphere(0.015);
     
     // insert cursor inside world
     world->addChild(cursorA);
-	world->addChild(cursorB);
-    world->addChild(cursorC);
 
     // add guide path trajectory into world
     world->addChild(guidePath);
@@ -384,38 +382,22 @@ int main(int argc, char* argv[])
     // assign color properties
     cColorf color;
     color.setYellowGold();
+    color.setBlue();
     guidePath->setLineColor(color);
     // assign line width
     guidePath->setLineWidth(4.0);
     // use display list for faster rendering
     guidePath->setUseDisplayList(true);
     // position object
-    //guidePath->setLocalPos(0.22,-0.22, 0.0);
+    //guidePath->setLocalPos(position);
 
-    // // create a line
-    //lineAB = new cShapeLine(cursorA, cursorB);
-    lineAB = new cShapeLine(cVector3d(0,0,0), cVector3d(0,0,0));
-    // lineBC = new cShapeLine(cursorB, cursorC);
+  	// set cursor colors
+    cursorA->m_material->setBlue(); 
 
-    // // inserts line connecting cursor inside world
-     world->addChild(lineAB);
-    // world->addChild(lineBC);
-    
-   	// set cursor colors
-    cursorA->m_material->setYellow();//setGreenMediumAquamarine(); 
-    cursorB->m_material->setOrangeCoral();
-    cursorC->m_material->setBlueRoyal();
-
-    // // set color at each point on line
-     lineAB->m_colorPointA.setBlack();
-     lineAB->m_colorPointB.setBlack();
-    // lineBC->m_colorPointA.setBlack();
-    // lineBC->m_colorPointB.setBlack();
-
-    // line properties
-    lineAB->setLineWidth(0.01);
-
-
+    // add object to world
+    //world->addChild(segments);
+   
+   
     //--------------------------------------------------------------------------
     // HAPTIC DEVICE
     //--------------------------------------------------------------------------
@@ -441,9 +423,7 @@ int main(int argc, char* argv[])
     //hapticDevice->setPosition(0,0,0);
     //hapticDevice->disableAutoUpdate();
     // cursorA->setLocalPos(0,-0.5,0);
-    // cursorB->setLocalPos(0,-0.45,0);
-    // cursorC->setLocalPos(0,-0.4,0);
-
+    
     //--------------------------------------------------------------------------
     // CREATE PLANE
     //--------------------------------------------------------------------------
@@ -548,32 +528,80 @@ int main(int argc, char* argv[])
     double xPoint_0 = 0;
     double yPoint_0 = 0;
     double zPoint_0 = 0;
+    double x;
     // need to fix
-    int passNumberofLines = 5;
+    int passNumberofLines = 1000;
+    double x_vec[passNumberofLines];
+    double y_vec[passNumberofLines];
+    double z_vec[passNumberofLines];
+    double index0;
+    double index1;
+    
     for(int c=4;c<7;++c){
-        for(int i=0;i<passNumberofLines;++i){
-            if (c==4) trajectoryFile >> xPoint;
-            if (c==5) trajectoryFile >> yPoint;
-            if (c==6) trajectoryFile >> zPoint;
-            // create vertex 0
-            int index0 = guidePath->newVertex(xPoint_0, yPoint_0, zPoint_0);
+        for(int i=0;i<passNumberofLines;i++){
+        //while ((istream.peek()!='\n'){
+            if (c==4) {
+                trajectoryFile >> xPoint;
+                x_vec[i] = xPoint;
+            }
+            if (c==5) {
+                trajectoryFile >> yPoint;
+                 y_vec[i] = yPoint;
+            }
+            if (c==6) {
+                trajectoryFile >> zPoint;
+                 z_vec[i] = zPoint;
+            }
+        }
+      }
+      // Create guidePath line segment object
+     for (int i=0;i<(passNumberofLines-2);i++){
+        // create vertex 0
+            index0 = guidePath->newVertex(x_vec[i], y_vec[i], z_vec[i]);
             
             // create vertex 1
-            int index1 = guidePath->newVertex(xPoint, yPoint, zPoint);
+            index1 = guidePath->newVertex(x_vec[i+1], y_vec[i+1], z_vec[i+1]);
 
             // create segment by connecting both vertices together
             guidePath->newSegment(index0, index1);
-
-            //update old segments
-            xPoint_0 = xPoint;
-            yPoint_0 = yPoint;
-            zPoint_0 = zPoint;
-            cout << xPoint << " " << yPoint << " " << zPoint << endl;
-       }
-       //trajectoryFile >> "\n";
-    }
-     //0.465,0.016,0.365
+     }
+          //0.465,0.016,0.365
     trajectoryFile.close();
+
+    using namespace chai3d;
+
+// connect some segments to form a spring
+double h = 0.0;
+double dh = 0.001;
+double a = 0.0;
+double da = 0.2;
+double r = 0.05;
+for (int i=0; i<200; i++)
+{
+    double px0 = r * cos(a);
+    double py0 = r * sin(a);
+    double pz0 = h;
+    double px1 = r * cos(a+da);
+    double py1 = r * sin(a+da);
+    double pz1 = h+dh;
+    // create vertex 0
+    int index0 = segments->newVertex(px0, py0, pz0);
+    
+    // create vertex 1
+    int index1 = segments->newVertex(px1, py1, pz1);
+    
+    // create segment by connecting both vertices together
+    segments->newSegment(index0, index1);
+    h = h + dh;
+    a = a + da;
+}
+// set haptic properties
+//segments->m_material->setStiffness(0.5 * maxStiffness);
+// assign color properties
+color.setYellowGold();
+segments->setLineColor(color);
+// assign line width
+segments->setLineWidth(4.0);
 }   
 
     // main graphic loop
@@ -659,9 +687,29 @@ void keyCallback(GLFWwindow* a_window, int a_key, int a_scancode, int a_action, 
     {
         useForceField = !useForceField;
         if (useForceField)
-            cout << "> Enable force field     \r";
+            cout << "> Enable force field     \n";
         else
-            cout << "> Disable force field    \r";
+            cout << "> Disable force field    \n";
+    }
+
+    // option - enable/disable trajectory recording
+    else if (a_key == GLFW_KEY_R)
+    {
+        useRecording = !useRecording;
+        if (useRecording)
+            cout << "> Enable trajectory recording     \n";
+        else
+            cout << "> Disable trajectory recording    \n";
+    }
+
+    // option - enable/disable trajectory on screen
+    else if (a_key == GLFW_KEY_T)
+    {
+        useTrajectory = !useTrajectory;
+        if (useTrajectory)
+            cout << "> Enable trajectory      \n";
+        else
+            cout << "> Disable trajectory     \n";
     }
 
     // option - enable/disable damping
@@ -669,9 +717,9 @@ void keyCallback(GLFWwindow* a_window, int a_key, int a_scancode, int a_action, 
     {
         useDamping = !useDamping;
         if (useDamping)
-            cout << "> Enable damping         \r";
+            cout << "> Enable damping         \n";
         else
-            cout << "> Disable damping        \r";
+            cout << "> Disable damping        \n";
     }
 
     // option - toggle fullscreen
@@ -751,6 +799,14 @@ void updateGraphics(void)
     // update force data
     labelForces->setText(hapticDeviceForces.str(3));
 
+    if (useTrajectory){
+         guidePath->setTransparencyLevel(1.0,useTrajectory,useTrajectory,useTrajectory);
+    segments->setTransparencyLevel(1.0,useTrajectory,useTrajectory,useTrajectory);
+    }
+    else {
+         guidePath->setTransparencyLevel(0,!useTrajectory,!useTrajectory,!useTrajectory);
+    segments->setTransparencyLevel(0,!useTrajectory,!useTrajectory,!useTrajectory);
+    }
     /////////////////////////////////////////////////////////////////////
     // WOODENHAPTICS DEBUG INFO
     /////////////////////////////////////////////////////////////////////
@@ -804,15 +860,16 @@ void updateHaptics(void)
         cVector3d position;
         hapticDevice->getPosition(position);
         // yellow
-        cursorA->setLocalPos(0.0,0);
-        //cursorA->setLocalRot(rotation);
-        // blue
-        cursorB->setLocalPos(position);
-        //cursorC->setLocalRot(rotation);
-        // orange
-        cursorC->setLocalPos(0,0,0);
-        //cursorC->setLocalRot(rotation);
+        cursorA->setLocalPos(position);
 
+
+
+        //guidePath->setLocalPos(position);
+        segments->setLocalPos(0.424,0.024,0.366);
+
+
+        //cursorA->setLocalRot(rotation);
+                
         // read orientation 
         //cMatrix3d rotation;
         //hapticDevice->getRotation(rotation);
@@ -904,6 +961,41 @@ void updateHaptics(void)
             //double Kvg = 1.0 * info.m_maxGripperAngularDamping;
             //gripperForce = gripperForce - Kvg * gripperAngularVelocity;
         }
+        // // record trajectory ateempt
+        // if (useRecording)
+        // {
+        //     using namespace std;
+
+        //     //forces.push_back(force);
+            
+        //     const char *homedir;
+        //     if ((homedir = getenv("HOME")) == NULL)
+        //     {
+        //         homedir = getpwuid(getuid())->pw_dir;
+        //     }
+        //     std::ofstream myfile;
+        //     myfile.open(std::string(homedir) + "/log.m");
+        //     //int lines = timestamp.size() < forces.size() ? timestamp.size() : forces.size();
+        //     int lines = positions.size() < lines ? positions.size() : lines;
+        //     //string channel[] = {"force_x=[","force_y=[","force_z=[","timestamp=[","pos_x=[","pos_y=[","pos_z=["};
+        //     string channel[7];
+        //     for (int c = 4; c < 7; ++c)
+        //     {
+        //         myfile << channel[c];
+        //         for (int i = 0; i < lines; ++i)
+        //         {
+        //             if (c == 4)
+        //                 myfile << positions[i].x() * 1000;
+        //             if (c == 5)
+        //                 myfile << positions[i].y() * 1000;
+        //             if (c == 6)
+        //                 myfile << positions[i].z() * 1000;
+        //             myfile << " ";
+        //         }
+        //         myfile << "];\n";
+        //     }
+        //     myfile.close();
+        // }
         // update global variable for graphic display update
          hapticDeviceForces = force;
 

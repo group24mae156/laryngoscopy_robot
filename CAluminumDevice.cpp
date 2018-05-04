@@ -45,7 +45,6 @@
 //------------------------------------------------------------------------------
 #include "system/CGlobals.h"
 #include "devices/CAluminumDevice.h"
-//#include "src/devices/CAluminumDevice.h"
 #include <string>
 
 // Following includes are only used for reading/writing config file and to find 
@@ -340,7 +339,7 @@ cWoodenDevice::cWoodenDevice(unsigned int a_deviceNumber):
     m_specifications.m_manufacturerName              = "Team 24";
 
     // name of your device
-    m_specifications.m_modelName                     = "Laryngoscopy Robotic Arm Tes2t";
+    m_specifications.m_modelName                     = "Laryngoscopy Robotic Arm";
 
 
     //--------------------------------------------------------------------------
@@ -713,33 +712,32 @@ bool cWoodenDevice::close()
 #ifdef SAVE_LOG
     using namespace std;
 
-    ofstream myfile;
-    myfile.open ("log.m");
+    const char *homedir;
+    if ((homedir = getenv("HOME")) == NULL) {
+        homedir = getpwuid(getuid())->pw_dir;
+    }
+    std::ofstream myfile;
+    myfile.open (std::string(homedir) + "/chai3d/log.m");
     int lines = timestamp.size() < forces.size() ? timestamp.size() : forces.size();
     lines = positions.size() < lines ? positions.size() : lines;
     // defining variable for trajectory use
     int passNumberofLines = 5;
     //string channel[] = {"force_x=[","force_y=[","force_z=[","timestamp=[","pos_x=[","pos_y=[","pos_z=["};
-    string channel[7]; 
-    for(int c=0;c<7;++c){
+    string channel[3]; 
+    for(int c=4;c<7;++c){
         myfile << channel[c];
-        for(int i=0;i<lines;++i){
-            if(c==0) myfile << forces[i].x();
-            if(c==1) myfile << forces[i].y();
-            if(c==2) myfile << forces[i].z();
-            if(c==3) myfile << timestamp[i]*0.000001;
-            if(c==4) myfile << positions[i].x()*1000;
-            if(c==5) myfile << positions[i].y()*1000;
-            if(c==6) myfile << positions[i].z()*1000;
+        for(int i=0;i<1000;++i){
+            if(c==4) myfile << positions[i].x();
+            if(c==5) myfile << positions[i].y();
+            if(c==6) myfile << positions[i].z();
             myfile << " ";
         }
-        myfile << "];\n";
+        myfile << "\n";
     }
     myfile.close();
 #endif
 
-
-
+   
     bool result = C_SUCCESS; // if the operation fails, set value to C_ERROR.
 
     // *** INSERT YOUR CODE HERE ***
@@ -1039,7 +1037,7 @@ bool cWoodenDevice::getPosition(cVector3d& a_position, bool updatePos)
         z = msg_in.position_z;
     };
     */
-
+   updatePos = true;
     if(updatePos && handle){
 
         int res=0;
@@ -1048,7 +1046,7 @@ bool cWoodenDevice::getPosition(cVector3d& a_position, bool updatePos)
             if(res==8) // Got a correct message
                 //incoming_msg = *reinterpret_cast<aluminumhaptics_message*>(buf);
                 hid_to_pc = *reinterpret_cast<hid_to_pc_message*>(buf);
-            usleep(10);
+            usleep(5000);
         }
 
         int flush=0;
