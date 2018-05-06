@@ -45,6 +45,7 @@
 //------------------------------------------------------------------------------
 #include "system/CGlobals.h"
 #include "devices/CAluminumDevice.h"
+#include "devices/CHapticDeviceHandler.h"
 #include <string>
 
 // Following includes are only used for reading/writing config file and to find 
@@ -110,7 +111,7 @@
 
     INSTRUCTION TO IMPLEMENT YOUR OWN CUSTOM DEVICE:
 
-    Please review header file CWoodenDevice.h for some initial 
+    Please review header file CAluminumDevice.h for some initial 
     guidelines about how to implement your own haptic device using this
     template.
 
@@ -146,10 +147,10 @@ std::string toJSON(const aluminumhaptics_message& m) {
 }
 
 //==============================================================================
-// WoodenHaptics configuration helper files.
+// AluminumHaptics configuration helper files.
 //==============================================================================
 
-cWoodenDevice::configuration default_woody(){
+cAluminumDevice::configuration default_woody(){
     double data[] = { 0, 0.010, 0.010, 0.010,
                       0.080, 0.205, 0.245,
                       0.160, 0.120, 0.120,
@@ -157,7 +158,7 @@ cWoodenDevice::configuration default_woody(){
                       0.0259, 0.0259, 0.0259, 3.0, 2000, 2000, 2000,
                       5.0, 1000.0, 8.0,
                       0.170, 0.110, 0.051, 0.091, 9.81, 0, 0, 0, 0};
-    return cWoodenDevice::configuration(data); 
+    return cAluminumDevice::configuration(data); 
 }
 
 double v(const std::string& json, const std::string& key){
@@ -166,7 +167,7 @@ double v(const std::string& json, const std::string& key){
     return atof(json.substr(p+1).c_str());
 }
 
-cWoodenDevice::configuration fromJSON(std::string json){
+cAluminumDevice::configuration fromJSON(std::string json){
     double d[]= {
         v(json,"variant"),
         v(json,"diameter_capstan_a"),
@@ -202,7 +203,7 @@ cWoodenDevice::configuration fromJSON(std::string json){
 		v(json,"angle_3"),
 		v(json,"offset_angle")
     }; 
-    return cWoodenDevice::configuration(d);
+    return cAluminumDevice::configuration(d);
 }
 
 std::string j(const std::string& key, const double& value){
@@ -212,7 +213,7 @@ std::string j(const std::string& key, const double& value){
    s << value << "," << std::endl;
    return s.str();
 }
-std::string toJSON(const cWoodenDevice::configuration& c){
+std::string toJSON(const cAluminumDevice::configuration& c){
    using namespace std;
    stringstream json;
    json << "{" << endl
@@ -253,7 +254,7 @@ std::string toJSON(const cWoodenDevice::configuration& c){
    return json.str();
 }
 
-void write_config_file(const cWoodenDevice::configuration& config, unsigned int number){
+void write_config_file(const cAluminumDevice::configuration& config, unsigned int number){
     const char *homedir;
     if ((homedir = getenv("HOME")) == NULL) {
         homedir = getpwuid(getuid())->pw_dir;
@@ -267,7 +268,7 @@ void write_config_file(const cWoodenDevice::configuration& config, unsigned int 
     ofile.close();
 }
 
-cWoodenDevice::configuration read_config_file( unsigned int number ){
+cAluminumDevice::configuration read_config_file( unsigned int number ){
     const char *homedir;
     if ((homedir = getenv("HOME")) == NULL) {
         homedir = getpwuid(getuid())->pw_dir;
@@ -298,10 +299,10 @@ cWoodenDevice::configuration read_config_file( unsigned int number ){
 
 //==============================================================================
 /*!
-    Constructor of cWoodenDevice.
+    Constructor of cAluminumDevice.
 */
 //==============================================================================
-cWoodenDevice::cWoodenDevice(unsigned int a_deviceNumber): 
+cAluminumDevice::cAluminumDevice(unsigned int a_deviceNumber): 
     m_config(read_config_file(deviceNumber = a_deviceNumber))
 {
     // the connection to your device has not yet been established.
@@ -324,12 +325,12 @@ cWoodenDevice::cWoodenDevice(unsigned int a_deviceNumber):
     ////////////////////////////////////////////////////////////////////////////
 
     //--------------------------------------------------------------------------
-    // NAME: WoodenHaptics
+    // NAME: AluminumHaptics
     //--------------------------------------------------------------------------
 
     // If we have a config file, use its values, otherwise, 
     // use standard values (and write them to config file)
-    std::cout << std::endl << "WoodenHaptics configuration used: " << std::endl 
+    std::cout << std::endl << "AluminumHaptics configuration used: " << std::endl 
               << toJSON(m_config) << std::endl; 
 
     // haptic device model (see file "CGenericHapticDevice.h")
@@ -402,7 +403,7 @@ cWoodenDevice::cWoodenDevice(unsigned int a_deviceNumber):
     m_specifications.m_sensedPosition                = true;
 
     // does your device provide sensed rotations (i.e stylus)?
-    m_specifications.m_sensedRotation                = false;
+    m_specifications.m_sensedRotation                = true;
 
     // does your device provide a gripper which can be sensed?
     m_specifications.m_sensedGripper                 = false;
@@ -457,10 +458,10 @@ cWoodenDevice::cWoodenDevice(unsigned int a_deviceNumber):
 
 //==============================================================================
 /*!
-    Destructor of cWoodenDevice.
+    Destructor of cAluminumDevice.
 */
 //==============================================================================
-cWoodenDevice::~cWoodenDevice()
+cAluminumDevice::~cAluminumDevice()
 {
     // close connection to device
     if (m_deviceReady)
@@ -477,7 +478,7 @@ cWoodenDevice::~cWoodenDevice()
     \return  __true__ if successful, __false__ otherwise.
 */
 //==============================================================================
-bool cWoodenDevice::open()
+bool cAluminumDevice::open()
 {
     // check if the system is available
     if (!m_deviceAvailable) return (C_ERROR);
@@ -508,7 +509,7 @@ bool cWoodenDevice::open()
     // *** INSERT YOUR CODE HERE ***
 
 #ifndef USB
-    //t = std::thread(&cWoodenDevice::set_dir,this);
+    //t = std::thread(&cAluminumDevice::set_dir,this);
     int boardflags  = S826_SystemOpen();
 
     std::cout << "S826 boardflags: " << boardflags << std::endl;
@@ -691,7 +692,7 @@ bool cWoodenDevice::open()
     \return  __true__ if successful, __false__ otherwise.
 */
 //==============================================================================
-bool cWoodenDevice::close()
+bool cAluminumDevice::close()
 {
     // check if the system has been opened previously
     if (!m_deviceReady) return (C_ERROR);
@@ -726,7 +727,7 @@ bool cWoodenDevice::close()
     string channel[3]; 
     for(int c=4;c<7;++c){
         myfile << channel[c];
-        for(int i=0;i<1000;++i){
+        for(int i=0;i<1500;++i){
             if(c==4) myfile << positions[i].x();
             if(c==5) myfile << positions[i].y();
             if(c==6) myfile << positions[i].z();
@@ -781,7 +782,7 @@ bool cWoodenDevice::close()
     \return  __true__ if successful, __false__ otherwise.
 */
 //==============================================================================
-bool cWoodenDevice::calibrate(bool a_forceCalibration)
+bool cAluminumDevice::calibrate(bool a_forceCalibration)
 {
     ////////////////////////////////////////////////////////////////////////////
     /*
@@ -818,14 +819,14 @@ bool cWoodenDevice::calibrate(bool a_forceCalibration)
     \return  __true__ if successful, __false__ otherwise.
 */
 //==============================================================================
-unsigned int cWoodenDevice::getNumDevices()
+unsigned int cAluminumDevice::getNumDevices()
 {
     ////////////////////////////////////////////////////////////////////////////
     /*
         STEP 6:
 
         Here you shall implement code that returns the number of available
-        haptic devices of type "cWoodenDevice" which are currently connected
+        haptic devices of type "cAluminumDevice" which are currently connected
         to your computer.
 
         In practice you will often have either 0 or 1 device. In which case
@@ -905,7 +906,7 @@ struct pose {
     double tC;  // angle of body C (theta_C)
 };
 
-pose calculate_pose(const cWoodenDevice::configuration& c, double* encoder_values) {
+pose calculate_pose(const cAluminumDevice::configuration& c, double* encoder_values) {
     pose p;
 
     double cpr[] = { c.cpr_encoder_a, c.cpr_encoder_b, c.cpr_encoder_c };
@@ -961,13 +962,24 @@ double deg(double rad){
     \return  __true__ if successful, __false__ otherwise.
 */
 //==============================================================================
-bool cWoodenDevice::getPosition(cVector3d& a_position)
+bool cAluminumDevice::getPosition(cVector3d& a_position)
 {
 	return getPosition( a_position, true );
 }
 
+bool cAluminumDevice::getPosition_2(cVector3d& a_position_2)
+{
+	return getPosition( a_position_2, true );
+}
 
-bool cWoodenDevice::getPosition(cVector3d& a_position, bool updatePos)
+bool cAluminumDevice::getPosition_3(cVector3d& a_position_3)
+{
+	return getPosition( a_position_3, true );
+}
+
+bool cAluminumDevice::getPosition(cVector3d& a_position, bool updatePos)
+
+
 {
     ////////////////////////////////////////////////////////////////////////////
     /*
@@ -988,6 +1000,9 @@ bool cWoodenDevice::getPosition(cVector3d& a_position, bool updatePos)
 
     bool result = C_SUCCESS;
     double x,y,z;
+    // variables for joint positions
+    double x_2,y_2,z_2;
+    cVector3d a_position_2;
 
     // *** INSERT YOUR CODE HERE, MODIFY CODE BELLOW ACCORDINGLY ***
 #ifndef USB
@@ -1109,13 +1124,23 @@ bool cWoodenDevice::getPosition(cVector3d& a_position, bool updatePos)
 
     x = cos(m_config.offset_angle)*(cos(tA)*(Lb*sin(tB)+Lc*sin(tC)) - 0.015384*sin(tA)) - sin(m_config.offset_angle)*(sin(tA)*(Lb*sin(tB)+Lc*sin(tC)) + 0.015384*cos(tA)) + m_config.workspace_origin_x;
     y = sin(m_config.offset_angle)*(cos(tA)*(Lb*sin(tB)+Lc*sin(tC)) - 0.015384*sin(tA)) + cos(m_config.offset_angle)*(sin(tA)*(Lb*sin(tB)+Lc*sin(tC)) + 0.015834*cos(tA)) + m_config.workspace_origin_y;
-    z = Ln+Lb*cos(tB)-Lc*cos(tC) + m_config.workspace_origin_z;
+    z = Ln+Lb*cos(tB)-Lc*cos(tC) + m_config.workspace_origin_z; 
+
+    x_2 = cos(m_config.offset_angle)*(cos(tA)*(Lb*sin(tB) - 0.015384*sin(tA))) - sin(m_config.offset_angle)*(sin(tA)*(Lb*sin(tB) + 0.015384*cos(tA))) + m_config.workspace_origin_x;
+    y_2 = sin(m_config.offset_angle)*(cos(tA)*(Lb*sin(tB) - 0.015384*sin(tA))) + cos(m_config.offset_angle)*(sin(tA)*(Lb*sin(tB) + 0.015834*cos(tA))) + m_config.workspace_origin_y;
+    z_2 = Ln+Lb*cos(tB) + m_config.workspace_origin_z;
+
+    // x_3 = cos(m_config.offset_angle)*(cos(tA)*(Lb*sin(tB) - 0.015384*sin(tA))) - sin(m_config.offset_angle)*(sin(tA)*(Lb*sin(tB) + 0.015384*cos(tA))) + m_config.workspace_origin_x;
+    // y_3 = sin(m_config.offset_angle)*(cos(tA)*(Lb*sin(tB) - 0.015384*sin(tA))) + cos(m_config.offset_angle)*(sin(tA)*(Lb*sin(tB) + 0.015834*cos(tA))) + m_config.workspace_origin_y;
+    // z_3 = Ln+Lb*cos(tB) + m_config.workspace_origin_z;
+
+
 	
 	/*
 	if ( (deviceNumber == 0) && updatePos)
 	{
 		std::cout << "Angles: " << std::to_string(tA * 180 / pi) << " " << std::to_string(tB * 180 / pi) << " " << std::to_string(tC * 180 / pi) << endl;
-	}
+	}cos(m_config.offset_angle)*(cos(tA)*(Lb*sin(tB)+Lc*sin(tC)) - 0.015384*sin(tA)) - sin(m_config.offset_angle)*(sin(tA)*(Lb*sin(tB)+Lc*sin(tC)) + 0.015384*cos(tA)) + m_config.workspace_origin_x;
 	*/
 
 
@@ -1147,6 +1172,7 @@ bool cWoodenDevice::getPosition(cVector3d& a_position, bool updatePos)
 
     // store new position values
     a_position.set(x, y, z);
+    a_position_2.set(x_2, y_2, z_2);
 #ifdef SERIAL
     a_position.set(0, 0, 0);
 #endif
@@ -1173,7 +1199,7 @@ bool cWoodenDevice::getPosition(cVector3d& a_position, bool updatePos)
     \return  __true__ if successful, __false__ otherwise.
 */
 //==============================================================================
-bool cWoodenDevice::getRotation(cMatrix3d& a_rotation)
+bool cAluminumDevice::getRotation(cMatrix3d& a_rotation)
 {
     ////////////////////////////////////////////////////////////////////////////
     /*
@@ -1300,7 +1326,7 @@ bool cWoodenDevice::getRotation(cMatrix3d& a_rotation)
     \return  __true__ if successful, __false__ otherwise.
 */
 //==============================================================================
-bool cWoodenDevice::getGripperAngleRad(double& a_angle)
+bool cAluminumDevice::getGripperAngleRad(double& a_angle)
 {
     ////////////////////////////////////////////////////////////////////////////
     /*
@@ -1327,7 +1353,7 @@ bool cWoodenDevice::getGripperAngleRad(double& a_angle)
 }
 
 #ifdef SENSORAY
-void cWoodenDevice::set_dir(){
+void cAluminumDevice::set_dir(){
     double period = 1000*50; //us (*50 for 50Mhz clock)
     using namespace std::chrono;
     duration<int, std::micro> d{1};
@@ -1408,7 +1434,7 @@ void cWoodenDevice::set_dir(){
     \return  __true__ if successful, __false__ otherwise.
 */
 //==============================================================================
-bool cWoodenDevice::setForceAndTorqueAndGripperForce(const cVector3d& a_force,
+bool cAluminumDevice::setForceAndTorqueAndGripperForce(const cVector3d& a_force,
                                                        const cVector3d& a_torque,
                                                        const double a_gripperForce)
 {
@@ -1710,7 +1736,7 @@ if(int(m_config.variant) == 1){ // ALUHAPTICS
     \return  __true__ if successful, __false__ otherwise.
 */
 //==============================================================================
-bool cWoodenDevice::getUserSwitch(int a_switchIndex, bool& a_status)
+bool cAluminumDevice::getUserSwitch(int a_switchIndex, bool& a_status)
 {
     ////////////////////////////////////////////////////////////////////////////
     /*
@@ -1735,17 +1761,6 @@ bool cWoodenDevice::getUserSwitch(int a_switchIndex, bool& a_status)
 
     return (result);
 }
-
-// // Possibly used to reset position to 0
-// bool cAluminumDevice::enableAutoUpdate()
-// {
-// 	autoUpdate = true;
-// }
-
-// bool cAluminumDevice::disableAutoUpdate()
-// {
-// 	autoUpdate = false;
-// }
 
 //------------------------------------------------------------------------------
 }       // namespace chai3d

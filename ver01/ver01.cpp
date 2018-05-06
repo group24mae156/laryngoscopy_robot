@@ -44,10 +44,13 @@
 
 //------------------------------------------------------------------------------
 #include "chai3d.h"
-#if defined(C_ENABLE_ALUMINUM_DEVICE_SUPPORT)
-//#undef C_ENABLE_TEACHING_DEVICE_SUPPORT
+#define C_ENABLE_ALUMINUM_DEVICE_SUPPORT
 #include "devices/CAluminumDevice.h"
-//#include "system/CGlobals.h"
+#include "system/CGlobals.h"
+#include "devices/CHapticDeviceHandler.h"
+
+#if defined(C_ENABLE_ALUMINUM_DEVICE_SUPPORT)
+
 #endif
 //------------------------------------------------------------------------------
 #include <GLFW/glfw3.h>
@@ -100,7 +103,10 @@ cCamera* camera;
 cDirectionalLight *light;
 
 // a small sphere (cursor) representing the haptic device 
-cShapeSphere* cursorA; 
+cShapeSphere* cursor_1;
+cShapeSphere* cursor_2; 
+cShapeSphere* cursor_3;
+cShapeSphere* cursor_4;
 
 // a haptic device handler
 cHapticDeviceHandler* handler;
@@ -241,8 +247,6 @@ int main(int argc, char* argv[])
     cout << "[f] - Enable/Disable full screen mode" << endl;
     cout << "[m] - Enable/Disable vertical mirroring" << endl;
     cout << "[q] - Exit application" << endl;
-    // print trajectory file size, but broken
-    //cout << std::string(passNumberofLines) << endl;
     cout << endl << endl;
 
 
@@ -341,7 +345,7 @@ int main(int argc, char* argv[])
                  cVector3d (0.0, 0.0, 1.0));   // direction of the (up) vector
 
                  // position and orient the camera side view
-    camera->set( cVector3d (0.5, -0.5, 0.25),    // camera position (eye)
+    camera->set( cVector3d (0.5, -0.3, 0.25),    // camera position (eye)
                  cVector3d (0.5, 0.0, 0.375),    // look at position (target)
                  cVector3d (0.0, 0.0, 1.0));   // direction of the (up) vector
 
@@ -371,10 +375,16 @@ int main(int argc, char* argv[])
     light->setDir(-1.0, 0.0, 0.0);
 
     // create a sphere (cursor) to represent the haptic device
-    cursorA = new cShapeSphere(0.015);
+    cursor_1 = new cShapeSphere(0.015);
+    cursor_2 = new cShapeSphere(0.015);
+    cursor_3 = new cShapeSphere(0.015);
+    cursor_4 = new cShapeSphere(0.015);
     
     // insert cursor inside world
-    world->addChild(cursorA);
+    world->addChild(cursor_1);
+    world->addChild(cursor_2);
+    world->addChild(cursor_3);
+    world->addChild(cursor_4);
 
     // add guide path trajectory into world
     world->addChild(guidePath);
@@ -392,7 +402,10 @@ int main(int argc, char* argv[])
     //guidePath->setLocalPos(position);
 
   	// set cursor colors
-    cursorA->m_material->setBlue(); 
+    cursor_1->m_material->setBlue();
+    cursor_2->m_material->setYellow();
+    cursor_3->m_material->setRed();
+    cursor_4->m_material->setOrange(); 
 
     // add object to world
     //world->addChild(segments);
@@ -416,14 +429,7 @@ int main(int argc, char* argv[])
 
     // retrieve information about the current haptic device
     cHapticDeviceInfo info = hapticDevice->getSpecifications();
-
-    // sets initial position of cursors currently broken
-    //hapticDevice->enableAutoUpdate();
-    //hapticDevice->getPosition(original);
-    //hapticDevice->setPosition(0,0,0);
-    //hapticDevice->disableAutoUpdate();
-    // cursorA->setLocalPos(0,-0.5,0);
-    
+   
     //--------------------------------------------------------------------------
     // CREATE PLANE
     //--------------------------------------------------------------------------
@@ -484,10 +490,7 @@ int main(int argc, char* argv[])
     camera->m_frontLayer->addChild(labelRates);
 
 
-	
-
-
-    //--------------------------------------------------------------------------
+	//--------------------------------------------------------------------------
     // START SIMULATION
     //--------------------------------------------------------------------------
 
@@ -530,7 +533,7 @@ int main(int argc, char* argv[])
     double zPoint_0 = 0;
     double x;
     // need to fix
-    int passNumberofLines = 1000;
+    int passNumberofLines = 1500;
     double x_vec[passNumberofLines];
     double y_vec[passNumberofLines];
     double z_vec[passNumberofLines];
@@ -808,12 +811,12 @@ void updateGraphics(void)
     segments->setTransparencyLevel(0,!useTrajectory,!useTrajectory,!useTrajectory);
     }
     /////////////////////////////////////////////////////////////////////
-    // WOODENHAPTICS DEBUG INFO
+    // AluminumHAPTICS DEBUG INFO
     /////////////////////////////////////////////////////////////////////
 
 #if defined(C_ENABLE_ALUMINUM_DEVICE_SUPPORT)
-    if(cWoodenDevice* w = dynamic_cast<cWoodenDevice*>(hapticDevice.get())){
-        cWoodenDevice::aluminumhaptics_status s = w->getStatus();
+    if(cAluminumDevice* w = dynamic_cast<cAluminumDevice*>(hapticDevice.get())){
+        cAluminumDevice::aluminumhaptics_status s = w->getStatus();
         //std::cout << s.toJSON() << std::endl;
     }
 #endif
@@ -856,55 +859,42 @@ void updateHaptics(void)
         // READ HAPTIC DEVICE
         /////////////////////////////////////////////////////////////////////
 
-        // update position and orientation of cursor 
+        // update position and orientation of cursor_1 (arm tip)
         cVector3d position;
         hapticDevice->getPosition(position);
-        // yellow
-        cursorA->setLocalPos(position);
+        cursor_1->setLocalPos(position);
+        cMatrix3d rotation;
+        hapticDevice->getRotation(rotation);
+        cursor_1->setLocalRot(rotation);
 
+        // update position and orientation of cursor_2 (last joint)
+        cVector3d position_2;
+        hapticDevice->getPosition_2(position_2);
+        cursor_2->setLocalPos(position_2);
 
+        // update position and orientation of cursor_3 (first joint)
+        cVector3d position_3;
+        hapticDevice->getPosition_3(position_3);
+        cursor_2->setLocalPos(position_3);
+
+        // update position and orientation of cursor_3 (origin)
+        cVector3d position_4 (0,0,0);
+        cursor_4->setLocalPos(position_4);
 
         //guidePath->setLocalPos(position);
         segments->setLocalPos(0.424,0.024,0.366);
 
-
-        //cursorA->setLocalRot(rotation);
-                
-        // read orientation 
-        //cMatrix3d rotation;
-        //hapticDevice->getRotation(rotation);
-
-        // read gripper position
-        //double gripperAngle;
-        //hapticDevice->getGripperAngleRad(gripperAngle);
-
-        // read linear velocity 
+        //read linear velocity 
         cVector3d linearVelocity;
         hapticDevice->getLinearVelocity(linearVelocity);
-
         // read angular velocity
         cVector3d angularVelocity;
         hapticDevice->getAngularVelocity(angularVelocity);
-
-        // read gripper angular velocity
-        //double gripperAngularVelocity;
-        //hapticDevice->getGripperAngularVelocity(gripperAngularVelocity);
-
-       
+     
         // /////////////////////////////////////////////////////////////////////
         // // UPDATE 3D CURSOR MODEL
         // /////////////////////////////////////////////////////////////////////
        
-        // update line
-        //lineAB->m_pointA = position;
-        //cVector3d offSetVec (0,0,0);
-        //offSetVec = position;
-        //lineAB->m_pointB = cAdd(position, offSetVec);
-
-        // // update position and orientation of cursor
-        // cursor->setLocalPos(position);
-        // cursor->setLocalRot(rotation);
-
         // update global variable for graphic display update
         hapticDevicePosition = position;
        
@@ -961,41 +951,7 @@ void updateHaptics(void)
             //double Kvg = 1.0 * info.m_maxGripperAngularDamping;
             //gripperForce = gripperForce - Kvg * gripperAngularVelocity;
         }
-        // // record trajectory ateempt
-        // if (useRecording)
-        // {
-        //     using namespace std;
-
-        //     //forces.push_back(force);
-            
-        //     const char *homedir;
-        //     if ((homedir = getenv("HOME")) == NULL)
-        //     {
-        //         homedir = getpwuid(getuid())->pw_dir;
-        //     }
-        //     std::ofstream myfile;
-        //     myfile.open(std::string(homedir) + "/log.m");
-        //     //int lines = timestamp.size() < forces.size() ? timestamp.size() : forces.size();
-        //     int lines = positions.size() < lines ? positions.size() : lines;
-        //     //string channel[] = {"force_x=[","force_y=[","force_z=[","timestamp=[","pos_x=[","pos_y=[","pos_z=["};
-        //     string channel[7];
-        //     for (int c = 4; c < 7; ++c)
-        //     {
-        //         myfile << channel[c];
-        //         for (int i = 0; i < lines; ++i)
-        //         {
-        //             if (c == 4)
-        //                 myfile << positions[i].x() * 1000;
-        //             if (c == 5)
-        //                 myfile << positions[i].y() * 1000;
-        //             if (c == 6)
-        //                 myfile << positions[i].z() * 1000;
-        //             myfile << " ";
-        //         }
-        //         myfile << "];\n";
-        //     }
-        //     myfile.close();
-        // }
+       
         // update global variable for graphic display update
          hapticDeviceForces = force;
 

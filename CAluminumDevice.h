@@ -42,12 +42,14 @@
 //==============================================================================
 
 //------------------------------------------------------------------------------
-#ifndef CWoodenDeviceH
-#define CWoodenDeviceH
+#ifndef CAluminumDeviceH
+#define CAluminumDeviceH
+#define C_ENABLE_ALUMINUM_DEVICE_SUPPORT
 //------------------------------------------------------------------------------
 #if defined(C_ENABLE_ALUMINUM_DEVICE_SUPPORT)
 //------------------------------------------------------------------------------
 #include "devices/CGenericHapticDevice.h"
+#include "devices/CHapticDeviceHandler.h"
 #include "hidapi.h"
 #include <chrono>
 #include <thread>
@@ -71,8 +73,8 @@ namespace chai3d {
 //==============================================================================
 
 //------------------------------------------------------------------------------
-class cWoodenDevice;
-typedef std::shared_ptr<cWoodenDevice> cWoodenDevicePtr;
+class cAluminumDevice;
+typedef std::shared_ptr<cAluminumDevice> cAluminumDevicePtr;
 
 
 // Our 12*4=48 byte message (used both up and down)
@@ -158,21 +160,21 @@ struct pc_to_hid_message {  // 4*2 = 8 bytes
     instance.\n
 */
 //==============================================================================
-class cWoodenDevice : public cGenericHapticDevice
+class cAluminumDevice : public cGenericHapticDevice
 {
     //--------------------------------------------------------------------------
     // CONSTRUCTOR & DESTRUCTOR:
     //--------------------------------------------------------------------------
 
 public:
-    //! Constructor of cWoodenDevice.
-    cWoodenDevice(unsigned int a_deviceNumber = 0);
+    //! Constructor of cAluminumDevice.
+    cAluminumDevice(unsigned int a_deviceNumber = 0);
 
-    //! Destructor of cWoodenDevice.
-    virtual ~cWoodenDevice();
+    //! Destructor of cAluminumDevice.
+    virtual ~cAluminumDevice();
 
-    //! Shared cWoodenDevice allocator.
-    static cWoodenDevicePtr create(unsigned int a_deviceNumber = 0) { return (std::make_shared<cWoodenDevice>(a_deviceNumber)); }
+    //! Shared cAluminumDevice allocator.
+    static cAluminumDevicePtr create(unsigned int a_deviceNumber = 0) { return (std::make_shared<cAluminumDevice>(a_deviceNumber)); }
 
 
     //--------------------------------------------------------------------------
@@ -192,6 +194,12 @@ public:
 
     //! Read the position of the device. Units are meters [m].
     virtual bool getPosition(cVector3d& a_position);
+
+    //! Read the position of the device. Units are meters [m].
+    virtual bool getPosition_2(cVector3d& a_position_2);
+
+    //! Read the position of the device. Units are meters [m].
+    virtual bool getPosition_3(cVector3d& a_position_3);
     
     //! Read the position of the device. Units are meters [m].
     virtual bool getPosition(cVector3d& a_position, bool updatePos);
@@ -231,7 +239,7 @@ public:
 		double angle_1;                 // rad (angle of base from default "front facing")
 		double angle_2;                 // rad (angle of link 2 from default "upright")
 		double angle_3;                 // rad (angle of link 3 from default "straight")
-        double variant;                 // 0=WoodenHaptics default, 1=AluHaptics
+        double variant;                 // 0=AluminumHaptics default, 1=AluHaptics
         double diameter_capstan_a;      // m
         double diameter_capstan_b;      // m
         double diameter_capstan_c;      // m
@@ -367,7 +375,7 @@ public:
         }
 
 
-        std::string config_toJSON(const cWoodenDevice::configuration& c){
+        std::string config_toJSON(const cAluminumDevice::configuration& c){
            using namespace std;
            stringstream json;
            json << "{" << endl
