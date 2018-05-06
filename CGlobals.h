@@ -179,8 +179,8 @@
     // #define C_ENABLE_DELTA_DEVICE_SUPPORT
     // #define C_ENABLE_PHANTOM_DEVICE_SUPPORT
     // #define C_ENABLE_LEAP_DEVICE_SUPPORT
-       #define C_ENABLE_WOODEN_DEVICE_SUPPORT
-       #define C_ENABLE_TEACHING_DEVICE_SUPPORT
+    //   #define C_ENABLE_WOODEN_DEVICE_SUPPORT
+    //   #define C_ENABLE_TEACHING_DEVICE_SUPPORT
        #define C_ENABLE_ALUMINUM_DEVICE_SUPPORT
     // #define C_ENABLE_SIXENSE_DEVICE_SUPPORT
 
@@ -216,7 +216,7 @@
     //#define C_ENABLE_DELTA_DEVICE_SUPPORT
     //#define C_ENABLE_PHANTOM_DEVICE_SUPPORT
     //#define C_ENABLE_LEAP_DEVICE_SUPPORT
-    #define C_ENABLE_WOODEN_DEVICE_SUPPORT
+    //#define C_ENABLE_WOODEN_DEVICE_SUPPORT
     //#define C_ENABLE_REMOTE_DEVICE_SUPPORT
     //#define C_ENABLE_TEACHING_DEVICE_SUPPORT
     #define C_ENABLE_ALUMINUM_DEVICE_SUPPORT
@@ -245,9 +245,9 @@
     //--------------------------------------------------------------------
     // HAPTIC DEVICES
     //--------------------------------------------------------------------
-    #define C_ENABLE_CUSTOM_DEVICE_SUPPORT
-    #define C_ENABLE_DELTA_DEVICE_SUPPORT
-    #define C_ENABLE_LEAP_DEVICE_SUPPORT
+    // #define C_ENABLE_CUSTOM_DEVICE_SUPPORT
+    // #define C_ENABLE_DELTA_DEVICE_SUPPORT
+    // #define C_ENABLE_LEAP_DEVICE_SUPPORT
     // #define C_ENABLE_SIXENSE_DEVICE_SUPPORT
 
 #endif
