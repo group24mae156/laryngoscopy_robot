@@ -45,7 +45,6 @@
 //------------------------------------------------------------------------------
 #include "system/CGlobals.h"
 #include "devices/CAluminumDevice.h"
-#include "devices/CHapticDeviceHandler.h"
 #include <string>
 
 // Following includes are only used for reading/writing config file and to find 
@@ -70,7 +69,7 @@
 #define USB  // define this to use the usb version
 //#define DELAY /// To test delay
 //#define PWM        // For PWM from DAQ, do not use with USB
-#define SAVE_LOG
+//#define SAVE_LOG
 //#define SERIAL  // for reading the orientation
 
 #ifndef USB
@@ -261,9 +260,9 @@ void write_config_file(const cAluminumDevice::configuration& config, unsigned in
     }
 
     std::cout << "Writing configuration to: "<< homedir 
-              << "/aluminumhapticsArm.json" << std::endl;
+              << "/chai3d/chai3d/aluminumhapticsArm.json" << std::endl;
     std::ofstream ofile;
-    ofile.open(std::string(homedir) + "/aluminumhapticsArm.json");
+    ofile.open(std::string(homedir) + "/chai3d/aluminumhapticsArm.json");
     ofile << toJSON(config);
     ofile.close();
 }
@@ -275,10 +274,10 @@ cAluminumDevice::configuration read_config_file( unsigned int number ){
     }
 
     std::cout << "Trying loading configuration from: "<< homedir 
-              << "/aluminumhapticsArm.json" << std::endl;
+              << "/chai3d/aluminumhapticsArm.json" << std::endl;
 
     std::ifstream ifile;
-    ifile.open(std::string(homedir) + "/aluminumhapticsArm.json");
+    ifile.open(std::string(homedir) + "/chai3d/aluminumhapticsArm.json");
     if(ifile.is_open()){
         std::stringstream buffer;
         buffer << ifile.rdbuf();
@@ -719,15 +718,17 @@ bool cAluminumDevice::close()
     }
     std::ofstream myfile;
     myfile.open (std::string(homedir) + "/chai3d/log.m");
+    //std::string outputFileName;
+    //myfile.open (std::string(homedir) + "/chai3d/" + outputFileName + ".m");
     int lines = timestamp.size() < forces.size() ? timestamp.size() : forces.size();
     lines = positions.size() < lines ? positions.size() : lines;
     // defining variable for trajectory use
-    int passNumberofLines = 5;
+    int passNumberofLines = 1500;
     //string channel[] = {"force_x=[","force_y=[","force_z=[","timestamp=[","pos_x=[","pos_y=[","pos_z=["};
     string channel[3]; 
     for(int c=4;c<7;++c){
         myfile << channel[c];
-        for(int i=0;i<1500;++i){
+        for(int i=0;i<passNumberofLines;++i){
             if(c==4) myfile << positions[i].x();
             if(c==5) myfile << positions[i].y();
             if(c==6) myfile << positions[i].z();
@@ -967,15 +968,6 @@ bool cAluminumDevice::getPosition(cVector3d& a_position)
 	return getPosition( a_position, true );
 }
 
-bool cAluminumDevice::getPosition_2(cVector3d& a_position_2)
-{
-	return getPosition( a_position_2, true );
-}
-
-bool cAluminumDevice::getPosition_3(cVector3d& a_position_3)
-{
-	return getPosition( a_position_3, true );
-}
 
 bool cAluminumDevice::getPosition(cVector3d& a_position, bool updatePos)
 
@@ -999,11 +991,8 @@ bool cAluminumDevice::getPosition(cVector3d& a_position, bool updatePos)
     ////////////////////////////////////////////////////////////////////////////
 
     bool result = C_SUCCESS;
-    double x,y,z;
-    // variables for joint positions
-    double x_2,y_2,z_2;
-    cVector3d a_position_2;
-
+    double x,y,z;  
+    
     // *** INSERT YOUR CODE HERE, MODIFY CODE BELLOW ACCORDINGLY ***
 #ifndef USB
     const pose p = calculate_pose(m_config,0);
@@ -1061,7 +1050,7 @@ bool cAluminumDevice::getPosition(cVector3d& a_position, bool updatePos)
             if(res==8) // Got a correct message
                 //incoming_msg = *reinterpret_cast<aluminumhaptics_message*>(buf);
                 hid_to_pc = *reinterpret_cast<hid_to_pc_message*>(buf);
-            usleep(5000);
+            usleep(10);
         }
 
         int flush=0;
@@ -1126,14 +1115,9 @@ bool cAluminumDevice::getPosition(cVector3d& a_position, bool updatePos)
     y = sin(m_config.offset_angle)*(cos(tA)*(Lb*sin(tB)+Lc*sin(tC)) - 0.015384*sin(tA)) + cos(m_config.offset_angle)*(sin(tA)*(Lb*sin(tB)+Lc*sin(tC)) + 0.015834*cos(tA)) + m_config.workspace_origin_y;
     z = Ln+Lb*cos(tB)-Lc*cos(tC) + m_config.workspace_origin_z; 
 
-    x_2 = cos(m_config.offset_angle)*(cos(tA)*(Lb*sin(tB) - 0.015384*sin(tA))) - sin(m_config.offset_angle)*(sin(tA)*(Lb*sin(tB) + 0.015384*cos(tA))) + m_config.workspace_origin_x;
-    y_2 = sin(m_config.offset_angle)*(cos(tA)*(Lb*sin(tB) - 0.015384*sin(tA))) + cos(m_config.offset_angle)*(sin(tA)*(Lb*sin(tB) + 0.015834*cos(tA))) + m_config.workspace_origin_y;
-    z_2 = Ln+Lb*cos(tB) + m_config.workspace_origin_z;
+    
 
-    // x_3 = cos(m_config.offset_angle)*(cos(tA)*(Lb*sin(tB) - 0.015384*sin(tA))) - sin(m_config.offset_angle)*(sin(tA)*(Lb*sin(tB) + 0.015384*cos(tA))) + m_config.workspace_origin_x;
-    // y_3 = sin(m_config.offset_angle)*(cos(tA)*(Lb*sin(tB) - 0.015384*sin(tA))) + cos(m_config.offset_angle)*(sin(tA)*(Lb*sin(tB) + 0.015834*cos(tA))) + m_config.workspace_origin_y;
-    // z_3 = Ln+Lb*cos(tB) + m_config.workspace_origin_z;
-
+    
 
 	
 	/*
@@ -1171,10 +1155,11 @@ bool cAluminumDevice::getPosition(cVector3d& a_position, bool updatePos)
 #endif
 
     // store new position values
-    a_position.set(x, y, z);
-    a_position_2.set(x_2, y_2, z_2);
+    
+    a_position.set(x,y,z);
 #ifdef SERIAL
-    a_position.set(0, 0, 0);
+    
+   // a_position.set(0,0,0);
 #endif
     latest_position = a_position;
 
@@ -1188,6 +1173,126 @@ bool cAluminumDevice::getPosition(cVector3d& a_position, bool updatePos)
     // exit
     return (result);
 }
+
+
+
+
+
+
+bool cAluminumDevice::getPosition_2(cVector3d& a_position_2)
+{
+	return getPosition( a_position_2, true );
+}
+
+bool cAluminumDevice::getPosition_2(cVector3d& a_position_2, bool updatePos){
+    bool result = C_SUCCESS;
+   
+    // variables for joint positions
+    double x_2,y_2,z_2;
+    
+    
+    // *** INSERT YOUR CODE HERE, MODIFY CODE BELLOW ACCORDINGLY ***
+#ifndef USB
+    const pose p = calculate_pose(m_config,0);
+#endif
+
+#ifdef USB
+
+   updatePos = true;
+    if(updatePos && handle){
+
+        int res=0;
+        while (res == 0) {
+            res = hid_read(handle, buf, sizeof(buf));
+            if(res==8) // Got a correct message
+                //incoming_msg = *reinterpret_cast<aluminumhaptics_message*>(buf);
+                hid_to_pc = *reinterpret_cast<hid_to_pc_message*>(buf);
+            usleep(5000);
+        }
+
+        int flush=0;
+        while(int res2 = hid_read(handle, buf, sizeof(buf))){
+            if(res==8) // Got a correct message
+                //incoming_msg = *reinterpret_cast<aluminumhaptics_message*>(buf);
+                hid_to_pc = *reinterpret_cast<hid_to_pc_message*>(buf);
+            ++flush;
+        }
+        //if(flush)
+        //    std::cout << "Flushed " << flush << " messages." << std::endl;
+        lost_messages += flush;
+    }
+
+
+    /*
+    while(int res = hid_read(handle, buf, sizeof(buf))){
+        if(res==48) // Got a correct message
+            incoming_msg = *reinterpret_cast<aluminumhaptics_message*>(buf);
+    }
+    */
+
+
+//    double encoder_values[] = { incoming_msg.temperature_0,
+//                                incoming_msg.temperature_1,
+//                                incoming_msg.temperature_2 };
+    //double encoder_values[] = { 0,                             0, 0 };
+    double encoder_values[] = { -hid_to_pc.encoder_a,
+                                hid_to_pc.encoder_b,
+                                hid_to_pc.encoder_c };
+
+    //std::cout << "a: " << hid_to_pc.encoder_a << " b:" << hid_to_pc.encoder_b << " c:"<< hid_to_pc.encoder_c << "\n";
+
+    using namespace std;
+    //cout << encoder_values[0] << ", " << encoder_values[1] << ", " << encoder_values[2] << endl;
+    pose p  = calculate_pose(m_config, encoder_values);
+#endif
+
+
+    const double& Ln = p.Ln;
+    const double& Lb = p.Lb;
+    const double& Lc = p.Lc;
+    const double& tA = p.tA;
+    double tB = p.tB;
+    double tC = p.tC;
+
+    
+
+    // Mike edition
+    if(int(m_config.variant) == 1) // ALUHAPTICS
+        tB = tB + 3.141592/2;
+    else
+        tC = -tC + 3.141592/2;
+
+
+
+    x_2 = cos(m_config.offset_angle)*(cos(tA)*(Lb*sin(tB) - 0.015384*sin(tA))) - sin(m_config.offset_angle)*(sin(tA)*(Lb*sin(tB) + 0.015384*cos(tA))) + m_config.workspace_origin_x;
+    y_2 = sin(m_config.offset_angle)*(cos(tA)*(Lb*sin(tB) - 0.015384*sin(tA))) + cos(m_config.offset_angle)*(sin(tA)*(Lb*sin(tB) + 0.015834*cos(tA))) + m_config.workspace_origin_y;
+    z_2 = Ln+Lb*cos(tB) + m_config.workspace_origin_z;
+
+
+
+
+#ifdef DELAY
+    using namespace std::chrono;
+    duration<int, std::micro> d{400};
+    std::this_thread::sleep_for(d);
+#endif
+
+    // store new position values
+
+a_position_2.set(x_2,y_2,z_2);
+#ifdef SERIAL
+    
+   // a_position_2.set(0,0,0);
+#endif
+    
+
+    
+
+    // exit
+    return (result);
+}
+
+
 
 
 //==============================================================================
