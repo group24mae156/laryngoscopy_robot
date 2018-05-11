@@ -155,7 +155,7 @@ bool simulationRunning = false;
 bool simulationFinished = true;
 
 // a flag for trajectory creation (ON/OFF)
-bool useRecording = false;
+bool useRecording = true;
 
 // a flag for trajectory pathway (ON/OFF)
 bool useTrajectory = true;
@@ -184,9 +184,6 @@ int swapInterval = 1;
 // a vector representing origin
 cVector3d original;// {0,0,0};
 
-// create a line segment object
-cMultiSegment* segments = new cMultiSegment();
-
 // global coordinate arrays
 double x_vec[1500];
 double y_vec[1500];
@@ -202,7 +199,7 @@ std::string outputFileName;
 double Kp;
 
 // variable for how many points taken from trajectory file
-int lines;
+int length;
 
 // save_log variable
 std::vector<cVector3d> positions_unique;
@@ -212,6 +209,8 @@ cVector3d a_position;
 //------------------------------------------------------------------------------
 // DECLARED FUNCTIONS
 //------------------------------------------------------------------------------
+// function used to read trajectory data
+void trajectoryRead(void);
 
 // function used to record trajectory data
 void trajectoryWrite(void);
@@ -271,7 +270,7 @@ int main(int argc, char* argv[])
     cout << "[q] - Exit application" << endl;
     cout << endl << endl;
 
-    //std::cout << " " << std::to_string(lines) << endl;
+    //std::cout << " " << std::to_string(length) << endl;
     // // query user for input fileName
 	// cout << "Enter the name of the file to read trajectory from (without extensions): ";
 	// cin >> fileName;
@@ -443,9 +442,6 @@ int main(int argc, char* argv[])
     cursor_3->m_material->setRed();
     cursor_4->m_material->setOrange(); 
 
-    // add object to world
-    //world->addChild(segments);
-   
    
     //--------------------------------------------------------------------------
     // HAPTIC DEVICE
@@ -561,52 +557,15 @@ int main(int argc, char* argv[])
     // call window size callback at initialization
     windowSizeCallback(window, width, height);
 
-    // open and load trajectory file
-    const char *homedir;
-
-    if ((homedir = getenv("HOME")) == NULL) {
-
-        homedir = getpwuid(getuid())->pw_dir;
-
-    }
+    // reads trajectory data
     if (useTrajectory){
-    string fileName = "logRead";
-    ifstream trajectoryFile;
-    trajectoryFile.open(string(homedir) + "/chai3d/" + fileName + ".m");
-    if (trajectoryFile.fail()) {
-        cerr << "Error Opening Trajectory File, Check File Name" <<endl;
-        exit(1);
+        trajectoryRead();
     }
-    double xPoint;
-    double yPoint;
-    double zPoint;
-    double xPoint_0 = 0;
-    double yPoint_0 = 0;
-    double zPoint_0 = 0;
-    double x;
-    // need to fix
+
+    // Create guidePath line segment object
     double index0;
     double index1;
-    
-    for(int c=4;c<7;++c){
-        for(int i=0;i<lines;i++){
-        //while ((istream.peek()!='\n'){
-            if (c==4) {
-                trajectoryFile >> xPoint;
-                x_vec[i] = xPoint;
-            }
-            if (c==5) {
-                trajectoryFile >> yPoint;
-                 y_vec[i] = yPoint;
-            }
-            if (c==6) {
-                trajectoryFile >> zPoint;
-                 z_vec[i] = zPoint;
-            }
-        }
-      }
-      // Create guidePath line segment object
-     for (int i=0;i<(lines-2);i++){
+    for (int i=0;i<(length-2);i++){
         // create vertex 0
             index0 = guidePath->newVertex(x_vec[i], y_vec[i], z_vec[i]);
             
@@ -616,44 +575,9 @@ int main(int argc, char* argv[])
             // create segment by connecting both vertices together
             guidePath->newSegment(index0, index1);
      }
-          //0.465,0.016,0.365
-    trajectoryFile.close();
-
-    using namespace chai3d;
-
-// connect some segments to form a spring
-double h = 0.0;
-double dh = 0.001;
-double a = 0.0;
-double da = 0.2;
-double r = 0.05;
-for (int i=0; i<200; i++)
-{
-    double px0 = r * cos(a);
-    double py0 = r * sin(a);
-    double pz0 = h;
-    double px1 = r * cos(a+da);
-    double py1 = r * sin(a+da);
-    double pz1 = h+dh;
-    // create vertex 0
-    int index0 = segments->newVertex(px0, py0, pz0);
-    
-    // create vertex 1
-    int index1 = segments->newVertex(px1, py1, pz1);
-    
-    // create segment by connecting both vertices together
-    segments->newSegment(index0, index1);
-    h = h + dh;
-    a = a + da;
-}
-// set haptic properties
-//segments->m_material->setStiffness(0.5 * maxStiffness);
-// assign color properties
-color.setYellowGold();
-segments->setLineColor(color);
-// assign line width
-segments->setLineWidth(4.0);
-}   
+     std::cout << "xchecker2 " << x_vec[0] << std::endl; 
+      std::cout << "ychecker2 " << y_vec[0] << std::endl;  
+      std::cout << "zchecker2 " << z_vec[0] << std::endl;  
 
     // main graphic loop
     while (!glfwWindowShouldClose(window))
@@ -683,15 +607,73 @@ segments->setLineWidth(4.0);
     glfwTerminate();
 
     // save log
-    trajectoryWrite();
+    if (useRecording){
+        trajectoryWrite();
+    }
 
     // exit
     return 0;
 }
 
 //------------------------------------------------------------------------------
+void trajectoryRead(void)
+{
+ // open and load trajectory file
+    const char *homedir;
 
-void trajectoryWrite(void){
+    if ((homedir = getenv("HOME")) == NULL) {
+
+        homedir = getpwuid(getuid())->pw_dir;
+
+    }
+    
+    std::string fileName = "logRead";
+    ifstream trajectoryFile;
+    trajectoryFile.open(string(homedir) + "/chai3d/" + fileName + ".m");
+    if (trajectoryFile.fail()) {
+        cerr << "Error Opening Trajectory File, Check File Name" <<endl;
+        exit(1);
+    }
+    double xPoint;
+    double yPoint;
+    double zPoint;
+    int counter = 0;    
+    int lines = 1500;
+    for(int c=4;c<7;++c){
+        for(int i=0;i<lines;i++){
+        // int i = 0;
+        // float f;
+        // string line;
+        // std::getline(fileName, line);
+        // istringstream fin(line);
+        // while(fin>>f){ //loop till end of line
+    
+            if (c==4) {
+                trajectoryFile >> xPoint;
+                x_vec[i] = xPoint;
+            }
+            if (c==5) {
+                trajectoryFile >> yPoint;
+                 y_vec[i] = yPoint;
+            }
+            if (c==6) {
+                trajectoryFile >> zPoint;
+                 z_vec[i] = zPoint;
+            }
+            counter = counter + 1;
+            i = i + 1;
+        }
+    }
+    counter = counter / 3;
+    trajectoryFile.close();
+    std::cout << "Number of points in trajectory input file " << lines << std::endl;
+    std::cout << "xchecker " << x_vec[0] << std::endl;
+    std::cout << "ychecker " << y_vec[0] << std::endl;
+    std::cout << "zchecker " << z_vec[0] << std::endl;
+}
+
+void trajectoryWrite(void)
+{
     using namespace std;
     const char *homedir;
     if ((homedir = getenv("HOME")) == NULL) {
@@ -700,13 +682,13 @@ void trajectoryWrite(void){
     std::ofstream myfile;
     //myfile.open (std::string(homedir) + "/chai3d/log.m");
     myfile.open (std::string(homedir) + "/chai3d/" + outputFileName + ".m");
-    int lines = positions_unique.size(); 
+    length = positions_unique.size(); 
     // defining variable for trajectory use
-    std::cout << "Number of points in trajectory file " << lines << std::endl;
+    std::cout << "Number of points in trajectory output file " << length << std::endl;
     string channel[3] = {"Test1","Test2","Test3"}; 
     for(int c=4;c<7;++c){
         myfile << channel[c];
-        for(int i=0;i<lines;++i){
+        for(int i=0;i<length;++i){
             if(c==4) myfile << positions_unique[i].x();
             if(c==5) myfile << positions_unique[i].y();
             if(c==6) myfile << positions_unique[i].z();
@@ -881,11 +863,9 @@ void updateGraphics(void)
 
     if (useTrajectory){
          guidePath->setTransparencyLevel(1.0,useTrajectory,useTrajectory,useTrajectory);
-    segments->setTransparencyLevel(1.0,useTrajectory,useTrajectory,useTrajectory);
     }
     else {
          guidePath->setTransparencyLevel(0,!useTrajectory,!useTrajectory,!useTrajectory);
-    segments->setTransparencyLevel(0,!useTrajectory,!useTrajectory,!useTrajectory);
     }
     /////////////////////////////////////////////////////////////////////
     // AluminumHAPTICS DEBUG INFO
@@ -958,9 +938,6 @@ void updateHaptics(void)
         cVector3d position_4 (0,0,0);
         cursor_4->setLocalPos(position_4);
 
-        //guidePath->setLocalPos(position);
-        segments->setLocalPos(0.424,0.024,0.366);
-
         //read linear velocity 
         cVector3d linearVelocity;
         hapticDevice->getLinearVelocity(linearVelocity);
@@ -986,7 +963,7 @@ void updateHaptics(void)
         int minIndex = 0;
 
         // Loop through every point on trajectory and change min and minIndex if a smaller distance is found
-        for (int i=1; i<lines; i++) {
+        for (int i=1; i<length; i++) {
                 double nextDistance = sqrt(pow(x_vec[i]-position.x(),2) + pow(y_vec[i]-position.y(),2) + pow(z_vec[i]-position.z(),2));
                 if (nextDistance < min) {
                     min = nextDistance;
@@ -1011,8 +988,13 @@ void updateHaptics(void)
 
         // desired position
         cVector3d desiredPosition;
-        //desiredPosition.set(0.0, 0.0, 0.0);
-        desiredPosition.set(x_vec[minIndex], y_vec[minIndex], z_vec[minIndex]);
+        double distanceTolerance = 0.01;
+        if (min > distanceTolerance){
+            desiredPosition.set(x_vec[minIndex], y_vec[minIndex], z_vec[minIndex]);
+        }
+        else {
+            desiredPosition.set(position.x(),position.y(),position.z());
+        }
 
         // desired orientation
         //cMatrix3d desiredRotation;
