@@ -84,6 +84,8 @@ bool fullscreen = false;
 // mirrored display
 bool mirroredDisplay = false;
 
+// show points other than the tip of the arm
+bool showJoints = false;
 
 //------------------------------------------------------------------------------
 // DECLARED VARIABLES
@@ -190,13 +192,13 @@ int swapInterval = 1;
 cVector3d original (0,0,0);
 
 // global coordinate arrays
-double x_vec[1500];
-double y_vec[1500];
-double z_vec[1500];
+// double x_vec[1500];
+// double y_vec[1500];
+// double z_vec[1500];
 
-// std::vector<double> x_vec;
-// std::vector<double> y_vec;
-// std::vector<double> z_vec;
+std::vector<double> x_vec = {0};
+std::vector<double> y_vec = {0};
+std::vector<double> z_vec = {0};
 
 // variable for trajectory file name
 std::string fileName;
@@ -675,27 +677,41 @@ void trajectoryRead(void)
     int counter = 0;    
     lines = 1500;
     for(int c=4;c<7;++c){
-        for(int i=0;i<lines;i++){
         // int i = 0;
+        for(int i=0;i<lines;i++){
         // float f;
         // string line;
-        // std::getline(fileName, line);
+        // std::getline(trajectoryFile, line);
         // istringstream fin(line);
         // while(fin>>f){ //loop till end of line
     
-            if (c==4) {
+            if (c==4 && i==0) {
                 trajectoryFile >> xPoint;
-                x_vec[i] = xPoint;
+                x_vec[0] = xPoint;
             }
-            if (c==5) {
+            if (c==4 && i!=0) {
+                trajectoryFile >> xPoint;
+                x_vec.push_back(xPoint);
+            }
+            if (c==5 && i==0) {
                 trajectoryFile >> yPoint;
-                 y_vec[i] = yPoint;
+                y_vec[0] = yPoint;
             }
-            if (c==6) {
+            if (c==5 && i!=0) {
+                trajectoryFile >> yPoint;
+                y_vec.push_back(yPoint);
+            }
+            if (c==6 && i==0) {
                 trajectoryFile >> zPoint;
-                 z_vec[i] = zPoint;
+                z_vec[0] = zPoint;
+            }
+            if (c==6 && i!=0) {
+                trajectoryFile >> zPoint;
+                z_vec.push_back(zPoint);
             }
             counter = counter + 1;
+
+            //i = i + 1;
         }
     }
     counter = counter / 3;
@@ -964,16 +980,17 @@ void updateHaptics(void)
         // update position and orientation of cursor_1 (arm tip)
         cursor_1->setLocalPos(position);
         cursor_1->setLocalRot(rotation);
-
+        if (showJoints = true){
         // update position and orientation of cursor_2 (last joint)
         cursor_2->setLocalPos(position_2);
-
+        // cursor_2->setLocalRot(rotation_2);
         // update position and orientation of middle joint
         cursor_3->setLocalPos(position_3);
-
+        // cursor_3->setLocalRot(rotation_3);
         // update position and orientation of base 
         cursor_4->setLocalPos(position_4);
-
+        // cursor_4->setLocalRot(rotation_4);
+        }
         //read linear velocity 
         cVector3d linearVelocity; 
         hapticDevice->getLinearVelocity(linearVelocity);       
