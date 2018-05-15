@@ -44,24 +44,22 @@
 //------------------------------------------------------------------------------
 #ifndef CAluminumDeviceH
 #define CAluminumDeviceH
-#define C_ENABLE_ALUMINUM_DEVICE_SUPPORT
 //------------------------------------------------------------------------------
 #if defined(C_ENABLE_ALUMINUM_DEVICE_SUPPORT)
 //------------------------------------------------------------------------------
 #include "devices/CGenericHapticDevice.h"
-#include "devices/CHapticDeviceHandler.h"
 #include "hidapi.h"
 #include <chrono>
 #include <thread>
 #include <vector>
 #include <string>
 //------------------------------------------------------------------------------
-
+// global variable made for trajectory creation
+//extern int passNumberofLines;
 //------------------------------------------------------------------------------
 namespace chai3d {
 //------------------------------------------------------------------------------
-// global variable made for trajectory creation
-    extern int passNumberofLines;
+
 //==============================================================================
 /*!
     \file       CCAluminumDeviceH
@@ -101,17 +99,25 @@ struct aluminumhaptics_message {
 
 
 struct hid_to_pc_message { // 4*2 = 8 bytes
-    short encoder_a;
-    short encoder_b;
-    short encoder_c;
-    short debug;
+    // short encoder_a;
+    // short encoder_b;
+    // short encoder_c;
+    // short debug;
+    double encoder_a;
+    double encoder_b;
+    double encoder_c;
+    double debug;
 };
 
 struct pc_to_hid_message {  // 4*2 = 8 bytes
-    short current_motor_a_mA;
-    short current_motor_b_mA;
-    short current_motor_c_mA;
-    short debug;
+    // short current_motor_a_mA;
+    // short current_motor_b_mA;
+    // short current_motor_c_mA;
+    // short debug;
+    double current_motor_a_mA;
+    double current_motor_b_mA;
+    double current_motor_c_mA;
+    double debug;
 };
 
 //------------------------------------------------------------------------------
@@ -193,19 +199,13 @@ public:
     virtual bool calibrate(bool a_forceCalibration = false);
 
     //! Read the position of the device. Units are meters [m].
-    virtual bool getPosition(cVector3d& a_position);
-
-    //! Read the position of the device. Units are meters [m].
-    virtual bool getPosition_2(cVector3d& a_position_2);
-
-    //! Read the position of the device. Units are meters [m].
-    virtual bool getPosition_3(cVector3d& a_position_3);
+    virtual bool getPosition(cVector3d& a_position, cVector3d& a_position_2, cVector3d& a_position_3, cVector3d& a_position_4);
     
     //! Read the position of the device. Units are meters [m].
-    virtual bool getPosition(cVector3d& a_position, bool updatePos);
+    virtual bool getPosition(cVector3d& a_position, cVector3d& a_position_2, cVector3d& a_position_3, cVector3d& a_position_4, bool updatePos);
 
     //! Read the orientation frame of the device handle.
-    virtual bool getRotation(cMatrix3d& a_rotation);
+    virtual bool getRotation(cMatrix3d& a_rotation, cMatrix3d& a_rotation_2, cMatrix3d& a_rotation_3, cMatrix3d& a_rotation_4);
 
     //! Read the gripper angle in radian [rad].
     virtual bool getGripperAngleRad(double& a_angle);
@@ -305,7 +305,8 @@ public:
     int lost_messages;
     int deviceNumber = 0;
     
-
+    std::string outputFileName;
+    int passNumberofLines;
 protected:
 	
     const configuration m_config;

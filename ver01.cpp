@@ -46,8 +46,6 @@
 #include "chai3d.h"
 #if defined(C_ENABLE_ALUMINUM_DEVICE_SUPPORT)
 #include "devices/CAluminumDevice.h"
-#define SAVE_LOG
-#include "system/CGlobals.h"
 #endif
 //------------------------------------------------------------------------------
 #include <GLFW/glfw3.h>
@@ -64,6 +62,7 @@ using namespace std;
 #include <sys/types.h>
 #include <pwd.h>
 #include <string>
+#include <vector>
 //------------------------------------------------------------------------------
 
 //------------------------------------------------------------------------------
@@ -112,8 +111,8 @@ cHapticDeviceHandler* handler;
 cMultiSegment* guidePath = new cMultiSegment();
 
 // a pointer to the current haptic device
-cGenericHapticDevicePtr hapticDevice;
-//cAluminumDevicePtr hapticDevice;
+//cGenericHapticDevicePtr hapticDevice;
+cAluminumDevicePtr hapticDevice;
 
 // a label to display the haptic device model
 cLabel* labelHapticDeviceModel;
@@ -123,6 +122,12 @@ cLabel* labelHapticDevicePosition;
 
 // a global variable to store the position [m] of the haptic device
 cVector3d hapticDevicePosition;
+
+// a label to display the linear velocity [m] of the haptic device
+cLabel* labelHapticDeviceLinearVelocity;
+
+// a global variable to store the linear velocity [m] of the haptic device
+string hapticeDeviceLinearVelocity;
 
 // a font for rendering text
 cFontPtr font;
@@ -182,12 +187,16 @@ int height = 0;
 int swapInterval = 1;
 
 // a vector representing origin
-cVector3d original;// {0,0,0};
+cVector3d original (0,0,0);
 
 // global coordinate arrays
 double x_vec[1500];
 double y_vec[1500];
 double z_vec[1500];
+
+// std::vector<double> x_vec;
+// std::vector<double> y_vec;
+// std::vector<double> z_vec;
 
 // variable for trajectory file name
 std::string fileName;
@@ -200,11 +209,17 @@ double Kp;
 
 // variable for how many points taken from trajectory file
 int length;
+int lines;
 
 // save_log variable
 std::vector<cVector3d> positions_unique;
 cVector3d a_position;
 
+// parameter for max linear velocity allowed
+double maxLinearVelocity = 5;
+
+// parameter for where haptic feedback kicks in
+double distanceTolerance = 0.01;
 
 //------------------------------------------------------------------------------
 // DECLARED FUNCTIONS
@@ -265,6 +280,8 @@ int main(int argc, char* argv[])
     cout << "Keyboard Options:" << endl << endl;
     cout << "[1] - Enable/Disable potential field" << endl;
     cout << "[2] - Enable/Disable damping" << endl;
+    cout << "[t] - Enable/Disable guide path" << endl;
+    cout << "[r] - Enable/Disable recording a trajectory" << endl;
     cout << "[f] - Enable/Disable full screen mode" << endl;
     cout << "[m] - Enable/Disable vertical mirroring" << endl;
     cout << "[q] - Exit application" << endl;
@@ -276,9 +293,10 @@ int main(int argc, char* argv[])
 	// cin >> fileName;
 
     // query user for output fileName
-	cout << "Enter the name of the file to record trajectory to (without extensions): ";
-	cin >> outputFileName;
-    
+	 //cout << "Enter the name of the file to record trajectory to (without extensions): ";
+	 //cin >> outputFileName;
+    outputFileName = "please";
+
     // // query user for proportional feedback constant
     // cout << "Enter proportional force constant (from 0 to 50) ";
 	// cin >> Kp;
@@ -411,9 +429,9 @@ int main(int argc, char* argv[])
 
     // create a sphere (cursor) to represent the haptic device
     cursor_1 = new cShapeSphere(0.015);
-    cursor_2 = new cShapeSphere(0.015);
-    cursor_3 = new cShapeSphere(0.015);
-    cursor_4 = new cShapeSphere(0.015);
+    cursor_2 = new cShapeSphere(0.012);
+    cursor_3 = new cShapeSphere(0.011);
+    cursor_4 = new cShapeSphere(0.01);
     
     // insert cursor inside world
     world->addChild(cursor_1);
@@ -451,8 +469,11 @@ int main(int argc, char* argv[])
     handler = new cHapticDeviceHandler();
 
     // get a handle to the first haptic device
-    handler->getDevice(hapticDevice, 0);
-
+    //handler->getDevice(hapticDevice, 0);
+    cGenericHapticDevicePtr ptrRetrieval;
+	handler->getDevice(ptrRetrieval, 0);
+    hapticDevice = dynamic_pointer_cast<cAluminumDevice>(ptrRetrieval);
+    
     // open a connection to haptic device
     hapticDevice->open();
 
@@ -470,13 +491,25 @@ int main(int argc, char* argv[])
 
         // set the size of the reference frame
         cursor_1->setFrameSize(0.05);
+
+        // // display reference frame
+        // cursor_2->setShowFrame(true);
+
+        // // set the size of the reference frame
+        // cursor_2->setFrameSize(0.05);
+
+        // // display reference frame
+        // cursor_3->setShowFrame(true);
+
+        // // set the size of the reference frame
+        // cursor_3->setFrameSize(0.05);
+
+        // display reference frame
+        cursor_4->setShowFrame(true);
+
+        // set the size of the reference frame
+        cursor_4->setFrameSize(0.05);
     }
-
-    // display reference frame on origin
-    cursor_4->setShowFrame(true);
-
-    // set the size of the reference frame
-    cursor_4->setFrameSize(0.05);
    
     //--------------------------------------------------------------------------
     // CREATE PLANE
@@ -532,6 +565,11 @@ int main(int argc, char* argv[])
     labelHapticDevicePosition = new cLabel(font);
     labelHapticDevicePosition->m_fontColor.setBlack();
     camera->m_frontLayer->addChild(labelHapticDevicePosition);
+
+    // create a label to display the linearVelocity of haptic device
+    labelHapticDeviceLinearVelocity = new cLabel(font);
+    labelHapticDeviceLinearVelocity->m_fontColor.setBlack();
+    camera->m_frontLayer->addChild(labelHapticDeviceLinearVelocity);
     
     // create a label to display the haptic and graphic rate of the simulation
     labelRates = new cLabel(font);
@@ -565,7 +603,7 @@ int main(int argc, char* argv[])
     // Create guidePath line segment object
     double index0;
     double index1;
-    for (int i=0;i<(length-2);i++){
+    for (int i=0;i<(lines-2);i++){
         // create vertex 0
             index0 = guidePath->newVertex(x_vec[i], y_vec[i], z_vec[i]);
             
@@ -574,10 +612,7 @@ int main(int argc, char* argv[])
 
             // create segment by connecting both vertices together
             guidePath->newSegment(index0, index1);
-     }
-     std::cout << "xchecker2 " << x_vec[0] << std::endl; 
-      std::cout << "ychecker2 " << y_vec[0] << std::endl;  
-      std::cout << "zchecker2 " << z_vec[0] << std::endl;  
+     } 
 
     // main graphic loop
     while (!glfwWindowShouldClose(window))
@@ -638,7 +673,7 @@ void trajectoryRead(void)
     double yPoint;
     double zPoint;
     int counter = 0;    
-    int lines = 1500;
+    lines = 1500;
     for(int c=4;c<7;++c){
         for(int i=0;i<lines;i++){
         // int i = 0;
@@ -661,15 +696,12 @@ void trajectoryRead(void)
                  z_vec[i] = zPoint;
             }
             counter = counter + 1;
-            i = i + 1;
         }
     }
     counter = counter / 3;
     trajectoryFile.close();
     std::cout << "Number of points in trajectory input file " << lines << std::endl;
-    std::cout << "xchecker " << x_vec[0] << std::endl;
-    std::cout << "ychecker " << y_vec[0] << std::endl;
-    std::cout << "zchecker " << z_vec[0] << std::endl;
+
 }
 
 void trajectoryWrite(void)
@@ -708,12 +740,15 @@ void windowSizeCallback(GLFWwindow* a_window, int a_width, int a_height)
     // update position of label
     labelHapticDeviceModel->setLocalPos(20, height - 40, 0);
 
+    // update position of pos axes label
+    labelPosAxes->setLocalPos(20, height - 70, 0);
+
     // update position of label
     labelHapticDevicePosition->setLocalPos(20, height - 100, 0);
 
-    // update position of pos axes label
-    labelPosAxes->setLocalPos(20, height - 70, 0);
-    
+    // update position of label
+    labelHapticDeviceLinearVelocity->setLocalPos(20, height - 130, 0);
+  
     //update position of force axes label
     labelForcesAxes->setLocalPos(width - 260, height - 70, 0);
 
@@ -851,6 +886,9 @@ void updateGraphics(void)
     // update position data
     labelHapticDevicePosition->setText(hapticDevicePosition.str(3));
 
+    // update velocity data
+    labelHapticDeviceLinearVelocity->setText("Linear Velocity: " + hapticeDeviceLinearVelocity);
+
     // update haptic and graphic rate data
     labelRates->setText(cStr(freqCounterGraphics.getFrequency(), 0) + " Hz / " +
                         cStr(freqCounterHaptics.getFrequency(), 0) + " Hz");
@@ -909,6 +947,7 @@ void updateHaptics(void)
     simulationRunning  = true;
     simulationFinished = false;
     cVector3d position;
+    int loopCount = 0;
     // main haptic simulation loop
     while(simulationRunning)
     {
@@ -916,31 +955,36 @@ void updateHaptics(void)
         // READ HAPTIC DEVICE
         /////////////////////////////////////////////////////////////////////
 
+        // grabs position and rotation data and creates vectors to assign it to
+        cVector3d position, position_2, position_3, position_4;
+        hapticDevice->getPosition(position, position_2, position_3, position_4);
+        cMatrix3d rotation, rotation_2, rotation_3, rotation_4;
+        hapticDevice->getRotation(rotation, rotation_2, rotation_3, rotation_4);
+
         // update position and orientation of cursor_1 (arm tip)
-        cVector3d position;
-        hapticDevice->getPosition(position);
         cursor_1->setLocalPos(position);
-        cMatrix3d rotation;
-        hapticDevice->getRotation(rotation);
         cursor_1->setLocalRot(rotation);
 
         // update position and orientation of cursor_2 (last joint)
-        // cVector3d position_2;
-        // hapticDevice->getPosition_2(position_2);
-        // cursor_2->setLocalPos(position_2);
+        cursor_2->setLocalPos(position_2);
 
-        // update position and orientation of cursor_3 (first joint)
-        // cVector3d position_3;
-        // hapticDevice->getPosition_3(position_3);
-        // cursor_2->setLocalPos(position_3);
+        // update position and orientation of middle joint
+        cursor_3->setLocalPos(position_3);
 
-        // update position and orientation of cursor_3 (origin)
-        cVector3d position_4 (0,0,0);
+        // update position and orientation of base 
         cursor_4->setLocalPos(position_4);
 
         //read linear velocity 
-        cVector3d linearVelocity;
-        hapticDevice->getLinearVelocity(linearVelocity);
+        cVector3d linearVelocity; 
+        hapticDevice->getLinearVelocity(linearVelocity);       
+        double currentVelocity = pow(linearVelocity.x(), 2) + pow(linearVelocity.y(), 2) +pow(linearVelocity.z(),2);
+        hapticeDeviceLinearVelocity = std::to_string(currentVelocity);
+        // safety shutdown
+        if (loopCount > 100 && (currentVelocity > maxLinearVelocity)) {
+        cerr << "Linear Velocity Too High, System Shutdown" <<endl;
+        exit(1);
+        }
+
         // read angular velocity
         cVector3d angularVelocity;
         hapticDevice->getAngularVelocity(angularVelocity);
@@ -971,7 +1015,7 @@ void updateHaptics(void)
                 }
         }
 
-        #ifdef SAVE_LOG
+        
             
             //cVector3d currentPosition (position.x(),position.y(),position.z());
             double x_hold = position.x();
@@ -980,7 +1024,7 @@ void updateHaptics(void)
             a_position.set(x_hold,y_hold,z_hold);
             positions_unique.push_back(a_position);
             usleep(950);
-        #endif
+        
        
         /////////////////////////////////////////////////////////////////////
         // COMPUTE AND APPLY FORCES
@@ -988,7 +1032,6 @@ void updateHaptics(void)
 
         // desired position
         cVector3d desiredPosition;
-        double distanceTolerance = 0.01;
         if (min > distanceTolerance){
             desiredPosition.set(x_vec[minIndex], y_vec[minIndex], z_vec[minIndex]);
         }
@@ -1003,7 +1046,6 @@ void updateHaptics(void)
         // variables for forces
         cVector3d force (0,0,0);
         cVector3d torque (0,0,0);
-        double gripperForce = 0.0;
 
         // apply force field
         if (useForceField)
@@ -1037,9 +1079,6 @@ void updateHaptics(void)
             cVector3d torqueDamping = -Kvr * angularVelocity;
             //torque.add(torqueDamping);
 
-            // compute gripper angular damping force
-            //double Kvg = 1.0 * info.m_maxGripperAngularDamping;
-            //gripperForce = gripperForce - Kvg * gripperAngularVelocity;
         }
        
         // update global variable for graphic display update
@@ -1050,6 +1089,7 @@ void updateHaptics(void)
 
         // signal frequency counter
         freqCounterHaptics.signal(1);
+        loopCount = loopCount + 1;
     }
     
     // exit haptics thread

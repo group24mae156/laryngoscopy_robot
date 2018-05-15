@@ -64,8 +64,6 @@
 #include <stdlib.h>
 #include "hidapi.h"
 
-
-
 #define USB  // define this to use the usb version
 //#define DELAY /// To test delay
 //#define PWM        // For PWM from DAQ, do not use with USB
@@ -81,9 +79,6 @@
 #include <chrono>
 #include <thread>
 #include <ratio>
-
-
-
 
 #ifdef SERIAL
 #include <stdio.h>   /* Standard input/output definitions */
@@ -963,13 +958,13 @@ double deg(double rad){
     \return  __true__ if successful, __false__ otherwise.
 */
 //==============================================================================
-bool cAluminumDevice::getPosition(cVector3d& a_position)
+bool cAluminumDevice::getPosition(cVector3d& a_position, cVector3d& a_position_2, cVector3d& a_position_3, cVector3d& a_position_4)
 {
-	return getPosition( a_position, true );
+	return getPosition( a_position, a_position_2, a_position_3, a_position_4, true );
 }
 
 
-bool cAluminumDevice::getPosition(cVector3d& a_position, bool updatePos)
+bool cAluminumDevice::getPosition(cVector3d& a_position, cVector3d& a_position_2, cVector3d& a_position_3, cVector3d& a_position_4, bool updatePos)
 
 
 {
@@ -992,7 +987,9 @@ bool cAluminumDevice::getPosition(cVector3d& a_position, bool updatePos)
 
     bool result = C_SUCCESS;
     double x,y,z;  
-    
+    double x_2,y_2,z_2;
+    double x_3,y_3,z_3;
+    double x_4,y_4,z_4;
     // *** INSERT YOUR CODE HERE, MODIFY CODE BELLOW ACCORDINGLY ***
 #ifndef USB
     const pose p = calculate_pose(m_config,0);
@@ -1115,8 +1112,17 @@ bool cAluminumDevice::getPosition(cVector3d& a_position, bool updatePos)
     y = sin(m_config.offset_angle)*(cos(tA)*(Lb*sin(tB)+Lc*sin(tC)) - 0.015384*sin(tA)) + cos(m_config.offset_angle)*(sin(tA)*(Lb*sin(tB)+Lc*sin(tC)) + 0.015834*cos(tA)) + m_config.workspace_origin_y;
     z = Ln+Lb*cos(tB)-Lc*cos(tC) + m_config.workspace_origin_z; 
 
-    
+    x_2 = cos(m_config.offset_angle)*(cos(tA)*(Lb*sin(tB)+0*sin(0)) - 0.015384*sin(tA)) - sin(m_config.offset_angle)*(sin(tA)*(Lb*sin(tB)+0*sin(0)) + 0.015384*cos(tA)) + m_config.workspace_origin_x;
+    y_2 = sin(m_config.offset_angle)*(cos(tA)*(Lb*sin(tB)+0*sin(0)) - 0.015384*sin(tA)) + cos(m_config.offset_angle)*(sin(tA)*(Lb*sin(tB)+0*sin(0)) + 0.015834*cos(tA)) + m_config.workspace_origin_y;
+    z_2 = Ln+Lb*cos(tB)-0*cos(0) + m_config.workspace_origin_z; 
 
+    x_3 = cos(m_config.offset_angle)*(cos(tA)*(0*sin(0)+0*sin(0)) - 0.015384*sin(tA)) - sin(m_config.offset_angle)*(sin(tA)*(0*sin(0)+0*sin(0)) + 0.015384*cos(tA)) + m_config.workspace_origin_x;
+    y_3 = sin(m_config.offset_angle)*(cos(tA)*(0*sin(0)+0*sin(0)) - 0.015384*sin(tA)) + cos(m_config.offset_angle)*(sin(tA)*(0*sin(0)+0*sin(0)) + 0.015834*cos(tA)) + m_config.workspace_origin_y;
+    z_3 = Ln+0*cos(0)-0*cos(0) + m_config.workspace_origin_z; 
+
+    x_4 = m_config.workspace_origin_x;
+    y_4 = m_config.workspace_origin_y;
+    z_4 = m_config.workspace_origin_z;
     
 
 	
@@ -1157,6 +1163,9 @@ bool cAluminumDevice::getPosition(cVector3d& a_position, bool updatePos)
     // store new position values
     
     a_position.set(x,y,z);
+    a_position_2.set(x_2,y_2,z_2);
+    a_position_3.set(x_3,y_3,z_3);
+    a_position_4.set(x_4,y_4,z_4);
 #ifdef SERIAL
     
    // a_position.set(0,0,0);
@@ -1174,127 +1183,6 @@ bool cAluminumDevice::getPosition(cVector3d& a_position, bool updatePos)
     return (result);
 }
 
-
-
-
-
-
-bool cAluminumDevice::getPosition_2(cVector3d& a_position_2)
-{
-	return getPosition( a_position_2, true );
-}
-
-bool cAluminumDevice::getPosition_2(cVector3d& a_position_2, bool updatePos){
-    bool result = C_SUCCESS;
-   
-    // variables for joint positions
-    double x_2,y_2,z_2;
-    
-    
-    // *** INSERT YOUR CODE HERE, MODIFY CODE BELLOW ACCORDINGLY ***
-#ifndef USB
-    const pose p = calculate_pose(m_config,0);
-#endif
-
-#ifdef USB
-
-   updatePos = true;
-    if(updatePos && handle){
-
-        int res=0;
-        while (res == 0) {
-            res = hid_read(handle, buf, sizeof(buf));
-            if(res==8) // Got a correct message
-                //incoming_msg = *reinterpret_cast<aluminumhaptics_message*>(buf);
-                hid_to_pc = *reinterpret_cast<hid_to_pc_message*>(buf);
-            usleep(5000);
-        }
-
-        int flush=0;
-        while(int res2 = hid_read(handle, buf, sizeof(buf))){
-            if(res==8) // Got a correct message
-                //incoming_msg = *reinterpret_cast<aluminumhaptics_message*>(buf);
-                hid_to_pc = *reinterpret_cast<hid_to_pc_message*>(buf);
-            ++flush;
-        }
-        //if(flush)
-        //    std::cout << "Flushed " << flush << " messages." << std::endl;
-        lost_messages += flush;
-    }
-
-
-    /*
-    while(int res = hid_read(handle, buf, sizeof(buf))){
-        if(res==48) // Got a correct message
-            incoming_msg = *reinterpret_cast<aluminumhaptics_message*>(buf);
-    }
-    */
-
-
-//    double encoder_values[] = { incoming_msg.temperature_0,
-//                                incoming_msg.temperature_1,
-//                                incoming_msg.temperature_2 };
-    //double encoder_values[] = { 0,                             0, 0 };
-    double encoder_values[] = { -hid_to_pc.encoder_a,
-                                hid_to_pc.encoder_b,
-                                hid_to_pc.encoder_c };
-
-    //std::cout << "a: " << hid_to_pc.encoder_a << " b:" << hid_to_pc.encoder_b << " c:"<< hid_to_pc.encoder_c << "\n";
-
-    using namespace std;
-    //cout << encoder_values[0] << ", " << encoder_values[1] << ", " << encoder_values[2] << endl;
-    pose p  = calculate_pose(m_config, encoder_values);
-#endif
-
-
-    const double& Ln = p.Ln;
-    const double& Lb = p.Lb;
-    const double& Lc = p.Lc;
-    const double& tA = p.tA;
-    double tB = p.tB;
-    double tC = p.tC;
-
-    
-
-    // Mike edition
-    if(int(m_config.variant) == 1) // ALUHAPTICS
-        tB = tB + 3.141592/2;
-    else
-        tC = -tC + 3.141592/2;
-
-
-
-    x_2 = cos(m_config.offset_angle)*(cos(tA)*(Lb*sin(tB) - 0.015384*sin(tA))) - sin(m_config.offset_angle)*(sin(tA)*(Lb*sin(tB) + 0.015384*cos(tA))) + m_config.workspace_origin_x;
-    y_2 = sin(m_config.offset_angle)*(cos(tA)*(Lb*sin(tB) - 0.015384*sin(tA))) + cos(m_config.offset_angle)*(sin(tA)*(Lb*sin(tB) + 0.015834*cos(tA))) + m_config.workspace_origin_y;
-    z_2 = Ln+Lb*cos(tB) + m_config.workspace_origin_z;
-
-
-
-
-#ifdef DELAY
-    using namespace std::chrono;
-    duration<int, std::micro> d{400};
-    std::this_thread::sleep_for(d);
-#endif
-
-    // store new position values
-
-a_position_2.set(x_2,y_2,z_2);
-#ifdef SERIAL
-    
-   // a_position_2.set(0,0,0);
-#endif
-    
-
-    
-
-    // exit
-    return (result);
-}
-
-
-
-
 //==============================================================================
 /*!
     Read the orientation frame of your device end-effector
@@ -1304,7 +1192,7 @@ a_position_2.set(x_2,y_2,z_2);
     \return  __true__ if successful, __false__ otherwise.
 */
 //==============================================================================
-bool cAluminumDevice::getRotation(cMatrix3d& a_rotation)
+bool cAluminumDevice::getRotation(cMatrix3d& a_rotation, cMatrix3d& a_rotation_2, cMatrix3d& a_rotation_3, cMatrix3d& a_rotation_4)
 {
     ////////////////////////////////////////////////////////////////////////////
     /*
@@ -1413,6 +1301,11 @@ bool cAluminumDevice::getRotation(cMatrix3d& a_rotation)
 
     // store new rotation matrix
     a_rotation = frame;
+    a_rotation_2 = frame;
+    a_rotation_3 = frame;
+    a_rotation_4 = frame;
+
+
 
     // estimate angular velocity
     estimateAngularVelocity(a_rotation);
