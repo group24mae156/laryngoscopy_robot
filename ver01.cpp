@@ -3,25 +3,19 @@
     Software License Agreement (BSD License)
     Copyright (c) 2003-2016, CHAI3D.
     (www.chai3d.org)
-
     All rights reserved.
-
     Redistribution and use in source and binary forms, with or without
     modification, are permitted provided that the following conditions
     are met:
-
     * Redistributions of source code must retain the above copyright
     notice, this list of conditions and the following disclaimer.
-
     * Redistributions in binary form must reproduce the above
     copyright notice, this list of conditions and the following
     disclaimer in the documentation and/or other materials provided
     with the distribution.
-
     * Neither the name of CHAI3D nor the names of its contributors may
     be used to endorse or promote products derived from this software
     without specific prior written permission.
-
     THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
     "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
     LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -34,7 +28,6 @@
     LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
     ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
     POSSIBILITY OF SUCH DAMAGE. 
-
     \author    <http://www.chai3d.org>
     \author         Francois Conti
     \modified by    Michael Berger
@@ -109,8 +102,11 @@ cShapeSphere* cursor_4;
 // a haptic device handler
 cHapticDeviceHandler* handler;
 
-// create a line segment object
+// create a line segment object to represent target trajectory
 cMultiSegment* guidePath = new cMultiSegment();
+
+// to connect joints of arms
+cMultiSegment* jointRelations = new cMultiSegment();
 
 // a pointer to the current haptic device
 //cGenericHapticDevicePtr hapticDevice;
@@ -162,7 +158,7 @@ bool simulationRunning = false;
 bool simulationFinished = true;
 
 // a flag for trajectory creation (ON/OFF)
-bool useRecording = true;
+bool useRecording = false;
 
 // a flag for trajectory pathway (ON/OFF)
 bool useTrajectory = true;
@@ -200,6 +196,10 @@ std::vector<double> x_vec = {0};
 std::vector<double> y_vec = {0};
 std::vector<double> z_vec = {0};
 
+// std::vector<double> x_vec;
+// std::vector<double> y_vec;
+// std::vector<double> z_vec;
+
 // variable for trajectory file name
 std::string fileName;
 
@@ -212,6 +212,7 @@ double Kp;
 // variable for how many points taken from trajectory file
 int length;
 int lines;
+int counter;
 
 // save_log variable
 std::vector<cVector3d> positions_unique;
@@ -254,12 +255,9 @@ void close(void);
 //==============================================================================
 /*
     Laryngoscopy Tracking Device
-
     This application illustrates how to program forces, torques and gripper
     forces to your haptic device.
-
     An OpenGL window is opened and displays 3D cursors representing the device connected to your computer. 
-
     In the main haptics loop function  "updateHaptics()" , the position,
     orientation and user switch status are read at each haptic cycle. 
     Force and torque vectors are computed and sent back to the haptic device.
@@ -444,17 +442,22 @@ int main(int argc, char* argv[])
     // add guide path trajectory into world
     world->addChild(guidePath);
 
-    // assign color properties
+    // add joint relations object into world
+    world->addChild(jointRelations);
+
+    // assign color properties to both line objects
     cColorf color;
     color.setYellowGold();
-    color.setBlue();
     guidePath->setLineColor(color);
+    jointRelations->setLineColor(color);
+
     // assign line width
     guidePath->setLineWidth(4.0);
+    jointRelations->setLineWidth(4.0);
+
     // use display list for faster rendering
     guidePath->setUseDisplayList(true);
-    // position object
-    //guidePath->setLocalPos(position);
+    //jointRelations->setUseDisplayList(true);
 
   	// set cursor colors
     cursor_1->m_material->setBlue();
@@ -644,9 +647,7 @@ int main(int argc, char* argv[])
     glfwTerminate();
 
     // save log
-    if (useRecording){
-        trajectoryWrite();
-    }
+    trajectoryWrite();
 
     // exit
     return 0;
@@ -674,17 +675,12 @@ void trajectoryRead(void)
     double xPoint;
     double yPoint;
     double zPoint;
-    int counter = 0;    
+    counter = 0;    
     lines = 1500;
+    string line;
+
     for(int c=4;c<7;++c){
-        // int i = 0;
-        for(int i=0;i<lines;i++){
-        // float f;
-        // string line;
-        // std::getline(trajectoryFile, line);
-        // istringstream fin(line);
-        // while(fin>>f){ //loop till end of line
-    
+        for(int i=0;i<lines;i++){   
             if (c==4 && i==0) {
                 trajectoryFile >> xPoint;
                 x_vec[0] = xPoint;
@@ -728,7 +724,6 @@ void trajectoryWrite(void)
         homedir = getpwuid(getuid())->pw_dir;
     }
     std::ofstream myfile;
-    //myfile.open (std::string(homedir) + "/chai3d/log.m");
     myfile.open (std::string(homedir) + "/chai3d/" + outputFileName + ".m");
     length = positions_unique.size(); 
     // defining variable for trajectory use
@@ -980,17 +975,28 @@ void updateHaptics(void)
         // update position and orientation of cursor_1 (arm tip)
         cursor_1->setLocalPos(position);
         cursor_1->setLocalRot(rotation);
-        if (showJoints = true){
+
+        if (showJoints){
         // update position and orientation of cursor_2 (last joint)
-        cursor_2->setLocalPos(position_2);
-        // cursor_2->setLocalRot(rotation_2);
-        // update position and orientation of middle joint
-        cursor_3->setLocalPos(position_3);
-        // cursor_3->setLocalRot(rotation_3);
-        // update position and orientation of base 
-        cursor_4->setLocalPos(position_4);
-        // cursor_4->setLocalRot(rotation_4);
+
+            cursor_2->setLocalPos(position_2);
+            // cursor_2->setLocalRot(rotation_2);
+            // update position and orientation of middle joint
+
+            cursor_3->setLocalPos(position_3);
+            // cursor_3->setLocalRot(rotation_3);
+            // update position and orientation of base 
+
+            cursor_4->setLocalPos(position_4);
+            // cursor_4->setLocalRot(rotation_4);
+
+            // Create jointRelations line segment object
+            jointRelations->newSegment(position, position_2);
+            jointRelations->newSegment(position_2, position_3);
+            jointRelations->newSegment(position_3, position_4);
         }
+
+
         //read linear velocity 
         cVector3d linearVelocity; 
         hapticDevice->getLinearVelocity(linearVelocity);       
@@ -1039,9 +1045,12 @@ void updateHaptics(void)
             double y_hold = position.y();
             double z_hold = position.z();
             a_position.set(x_hold,y_hold,z_hold);
-            positions_unique.push_back(a_position);
-            usleep(950);
-        
+
+            // only record
+            if (useRecording){
+                positions_unique.push_back(a_position);
+            }
+           
        
         /////////////////////////////////////////////////////////////////////
         // COMPUTE AND APPLY FORCES
@@ -1107,6 +1116,9 @@ void updateHaptics(void)
         // signal frequency counter
         freqCounterHaptics.signal(1);
         loopCount = loopCount + 1;
+
+        // sleep to set update rate at approximately 1000Hz
+         usleep(950);
     }
     
     // exit haptics thread
@@ -1114,5 +1126,3 @@ void updateHaptics(void)
 }
 
 //------------------------------------------------------------------------------
-
-
