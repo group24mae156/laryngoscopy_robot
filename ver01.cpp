@@ -78,7 +78,7 @@ bool fullscreen = false;
 bool mirroredDisplay = false;
 
 // show points other than the tip of the arm
-bool showJoints = false;
+bool showJoints = true;
 
 //------------------------------------------------------------------------------
 // DECLARED VARIABLES
@@ -224,6 +224,9 @@ double maxLinearVelocity = 5;
 // parameter for where haptic feedback kicks in
 double distanceTolerance = 0.01;
 
+// global position vectors of the tip of arm and it's join
+cVector3d position, position_2, position_3, position_4;
+
 //------------------------------------------------------------------------------
 // DECLARED FUNCTIONS
 //------------------------------------------------------------------------------
@@ -247,6 +250,9 @@ void updateGraphics(void);
 
 // this function contains the main haptics simulation loop
 void updateHaptics(void);
+
+// function that creates jointRelations multiObject at lower rate than haptic loop
+void jointRelationsFunc(void);
 
 // this function closes the application
 void close(void);
@@ -392,15 +398,20 @@ int main(int argc, char* argv[])
     camera = new cCamera(world);
     world->addChild(camera);
 
-    // position and orient the camera front view
-    camera->set( cVector3d (0.0, 0.0, 0.375),    // camera position (eye)
-                 cVector3d (1.0, 0.0, 0.375),    // look at position (target)
+    // // position and orient the camera front view
+    // camera->set( cVector3d (0.0, 0.0, 0.375),    // camera position (eye)
+    //              cVector3d (1.0, 0.0, 0.375),    // look at position (target)
+    //              cVector3d (0.0, 0.0, 1.0));   // direction of the (up) vector
+
+                 // position and orient the camera side view
+    camera->set( cVector3d (0.5, -0.3, 0.25),    // camera position (eye)
+                 cVector3d (0.5, 0.0, 0.375),    // look at position (target)
                  cVector3d (0.0, 0.0, 1.0));   // direction of the (up) vector
 
-    //              // position and orient the camera side view
-    // camera->set( cVector3d (0.5, -0.3, 0.25),    // camera position (eye)
-    //              cVector3d (0.5, 0.0, 0.375),    // look at position (target)
-    //              cVector3d (0.0, 0.0, 1.0));   // direction of the (up) vector
+                              // position and orient the camera side view
+    camera->set( cVector3d (1, -0.6, 0.5),    // camera position (eye)
+                 cVector3d (0.5, 0.0, 0.375),    // look at position (target)
+                 cVector3d (0.0, 0.0, 1.0));   // direction of the (up) vector
 
     // set the near and far clipping planes of the camera
     camera->setClippingPlanes(0.01, 10.0);
@@ -967,7 +978,7 @@ void updateHaptics(void)
         /////////////////////////////////////////////////////////////////////
 
         // grabs position and rotation data and creates vectors to assign it to
-        cVector3d position, position_2, position_3, position_4;
+        
         hapticDevice->getPosition(position, position_2, position_3, position_4);
         cMatrix3d rotation, rotation_2, rotation_3, rotation_4;
         hapticDevice->getRotation(rotation, rotation_2, rotation_3, rotation_4);
@@ -990,10 +1001,10 @@ void updateHaptics(void)
             cursor_4->setLocalPos(position_4);
             // cursor_4->setLocalRot(rotation_4);
 
-            // Create jointRelations line segment object
-            jointRelations->newSegment(position, position_2);
-            jointRelations->newSegment(position_2, position_3);
-            jointRelations->newSegment(position_3, position_4);
+            // call to function which creates and updates jointRelations object at slower tick rate than updateHaptics loop
+            if (loopCount % 16 == 0){
+            jointRelationsFunc();
+            }
         }
 
 
@@ -1002,9 +1013,12 @@ void updateHaptics(void)
         hapticDevice->getLinearVelocity(linearVelocity);       
         double currentVelocity = pow(linearVelocity.x(), 2) + pow(linearVelocity.y(), 2) +pow(linearVelocity.z(),2);
         hapticeDeviceLinearVelocity = std::to_string(currentVelocity);
+
         // safety shutdown
         if (loopCount > 100 && (currentVelocity > maxLinearVelocity)) {
         cerr << "Linear Velocity Too High, System Shutdown" <<endl;
+        GLFWwindow* a_window;
+        glfwSetWindowShouldClose(a_window, GLFW_TRUE);
         exit(1);
         }
 
@@ -1125,4 +1139,12 @@ void updateHaptics(void)
     simulationFinished = true;
 }
 
+void jointRelationsFunc(void)
+{
+    //Create jointRelations line segment object
+    jointRelations->newSegment(position, position_2);
+    jointRelations->newSegment(position_2, position_3);
+    jointRelations->newSegment(position_3, position_4);
+    //usleep (3000);
+}
 //------------------------------------------------------------------------------
