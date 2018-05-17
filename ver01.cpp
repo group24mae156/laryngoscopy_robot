@@ -218,6 +218,8 @@ double distanceTolerance = 0.01;
 // global position vectors of the tip of arm and it's join
 cVector3d position, position_2, position_3, position_4;
 
+// global vectors used to erase joint connection segments upon update
+cVector3d vertex1, vertex2, vertex3, vertex4;
 //------------------------------------------------------------------------------
 // DECLARED FUNCTIONS
 //------------------------------------------------------------------------------
@@ -242,9 +244,6 @@ void updateGraphics(void);
 
 // this function contains the main haptics simulation loop
 void updateHaptics(void);
-
-// function that creates jointRelations multiObject at lower rate than haptic loop
-void jointRelationsFunc(void);
 
 // this function closes the application
 void close(void);
@@ -997,7 +996,16 @@ void updateHaptics(void)
 
             // call to function which creates and updates jointRelations object at slower tick rate than updateHaptics loop
             if (loopCount % 16 == 0){
-            jointRelationsFunc();
+                int n = jointRelations->getNumSegments();;
+                
+                //Create jointRelations line segment object
+                if (n > 0){
+                    jointRelations->clear();
+                }
+                jointRelations->newSegment(position, position_2);
+                jointRelations->newSegment(position_2, position_3);
+                jointRelations->newSegment(position_3, position_4);
+                
             }
         }
 
@@ -1131,12 +1139,5 @@ void updateHaptics(void)
     simulationFinished = true;
 }
 
-void jointRelationsFunc(void)
-{
-    //Create jointRelations line segment object
-    jointRelations->newSegment(position, position_2);
-    jointRelations->newSegment(position_2, position_3);
-    jointRelations->newSegment(position_3, position_4);
-    //usleep (3000);
-}
+
 //------------------------------------------------------------------------------
