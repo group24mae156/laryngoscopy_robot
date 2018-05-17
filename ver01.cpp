@@ -433,8 +433,8 @@ int main(int argc, char* argv[])
     // create a sphere (cursor) to represent the haptic device
     cursor_1 = new cShapeSphere(0.015);
     cursor_2 = new cShapeSphere(0.012);
-    cursor_3 = new cShapeSphere(0.011);
-    cursor_4 = new cShapeSphere(0.01);
+    cursor_3 = new cShapeSphere(0.012);
+    cursor_4 = new cShapeSphere(0.02);
 
     // create a sphere to represent the start point
     startPoint = new cShapeSphere(0.02);
@@ -476,7 +476,7 @@ int main(int argc, char* argv[])
 
     // set start point color and transparency
     startPoint->m_material->setGreen();
-    startPoint->setTransparencyLevel(0);
+    startPoint->setTransparencyLevel(0.4);
 
    
     //--------------------------------------------------------------------------
@@ -509,18 +509,6 @@ int main(int argc, char* argv[])
 
         // set the size of the reference frame
         cursor_1->setFrameSize(0.05);
-
-        // // display reference frame
-        // cursor_2->setShowFrame(true);
-
-        // // set the size of the reference frame
-        // cursor_2->setFrameSize(0.05);
-
-        // // display reference frame
-        // cursor_3->setShowFrame(true);
-
-        // // set the size of the reference frame
-        // cursor_3->setFrameSize(0.05);
 
         // display reference frame
         cursor_4->setShowFrame(true);
@@ -809,11 +797,9 @@ void keyCallback(GLFWwindow* a_window, int a_key, int a_scancode, int a_action, 
         useForceField = !useForceField;
         if (useForceField){
             cout << "> Enable force field     \n";
-            startPoint->setTransparencyLevel(0);
         }
         else{
             cout << "> Disable force field    \n";
-            startPoint->setTransparencyLevel(0.4);
         }
     }
 
@@ -821,10 +807,15 @@ void keyCallback(GLFWwindow* a_window, int a_key, int a_scancode, int a_action, 
     else if (a_key == GLFW_KEY_R)
     {
         useRecording = !useRecording;
-        if (useRecording)
+        if (useRecording){
             cout << "> Enable trajectory recording     \n";
-        else
+            startPoint->setTransparencyLevel(0);
+        }
+        else{
             cout << "> Disable trajectory recording    \n";
+            startPoint->setTransparencyLevel(0.4);
+
+        }
     }
 
     // option - enable/disable trajectory on screen
