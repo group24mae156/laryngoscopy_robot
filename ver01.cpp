@@ -28,10 +28,9 @@
     LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
     ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
     POSSIBILITY OF SUCH DAMAGE. 
-    \author    <http://www.chai3d.org>
-    \author         Francois Conti
-    \modified by    Michael Berger
-    \version        3.2.0 $Rev: 1869 $
+    \author   <http://www.chai3d.org>
+    \author   Francois Conti
+    \autor    Michael Berger
 */
 //==============================================================================
 
@@ -46,8 +45,6 @@
 using namespace chai3d;
 using namespace std;
 
-// Following includes are only used for reading/writing config file and to find 
-// the user's home directory (where the config file will be stored)
 #include <iostream>
 #include <fstream> 
 #include <sstream>
@@ -93,11 +90,14 @@ cCamera* camera;
 // a light source to illuminate the objects in the world
 cDirectionalLight *light;
 
-// a small sphere (cursor) representing the haptic device 
+// a small sphere (cursor) representing parts of the haptic device 
 cShapeSphere* cursor_1;
 cShapeSphere* cursor_2; 
 cShapeSphere* cursor_3;
 cShapeSphere* cursor_4;
+
+// a transparent sphere representing the trajectory start point
+cShapeSphere* startPoint;
 
 // a haptic device handler
 cHapticDeviceHandler* handler;
@@ -105,11 +105,10 @@ cHapticDeviceHandler* handler;
 // create a line segment object to represent target trajectory
 cMultiSegment* guidePath = new cMultiSegment();
 
-// to connect joints of arms
+// create a line sgement object to connect joints of arms
 cMultiSegment* jointRelations = new cMultiSegment();
 
 // a pointer to the current haptic device
-//cGenericHapticDevicePtr hapticDevice;
 cAluminumDevicePtr hapticDevice;
 
 // a label to display the haptic device model
@@ -187,23 +186,15 @@ int swapInterval = 1;
 // a vector representing origin
 cVector3d original (0,0,0);
 
-// global coordinate arrays
-// double x_vec[1500];
-// double y_vec[1500];
-// double z_vec[1500];
-
+// global coordinate arrays used in trajectory writing
 std::vector<double> x_vec = {0};
 std::vector<double> y_vec = {0};
 std::vector<double> z_vec = {0};
 
-// std::vector<double> x_vec;
-// std::vector<double> y_vec;
-// std::vector<double> z_vec;
+// variable for trajectory input file name
+std::string inputfileName;
 
-// variable for trajectory file name
-std::string fileName;
-
-// variable for trajectory file name
+// variable for trajectory output file name
 std::string outputFileName;
 
 // variable for proportional force feedback
@@ -230,6 +221,7 @@ cVector3d position, position_2, position_3, position_4;
 //------------------------------------------------------------------------------
 // DECLARED FUNCTIONS
 //------------------------------------------------------------------------------
+
 // function used to read trajectory data
 void trajectoryRead(void);
 
@@ -294,9 +286,9 @@ int main(int argc, char* argv[])
     cout << endl << endl;
 
     //std::cout << " " << std::to_string(length) << endl;
-    // // query user for input fileName
+    // // query user for input inputfileName
 	// cout << "Enter the name of the file to read trajectory from (without extensions): ";
-	// cin >> fileName;
+	// cin >> inputfileName;
 
     // query user for output fileName
 	 //cout << "Enter the name of the file to record trajectory to (without extensions): ";
@@ -403,13 +395,13 @@ int main(int argc, char* argv[])
     //              cVector3d (1.0, 0.0, 0.375),    // look at position (target)
     //              cVector3d (0.0, 0.0, 1.0));   // direction of the (up) vector
 
-                 // position and orient the camera side view
+    // position and orient the camera side view
     camera->set( cVector3d (0.5, -0.3, 0.25),    // camera position (eye)
                  cVector3d (0.5, 0.0, 0.375),    // look at position (target)
                  cVector3d (0.0, 0.0, 1.0));   // direction of the (up) vector
 
-                              // position and orient the camera side view
-    camera->set( cVector3d (1, -0.6, 0.5),    // camera position (eye)
+    // position and orient the camera side view
+    camera->set( cVector3d (1, -0.5, 0.375),    // camera position (eye)
                  cVector3d (0.5, 0.0, 0.375),    // look at position (target)
                  cVector3d (0.0, 0.0, 1.0));   // direction of the (up) vector
 
@@ -443,12 +435,18 @@ int main(int argc, char* argv[])
     cursor_2 = new cShapeSphere(0.012);
     cursor_3 = new cShapeSphere(0.011);
     cursor_4 = new cShapeSphere(0.01);
-    
+
+    // create a sphere to represent the start point
+    startPoint = new cShapeSphere(0.02);
+
     // insert cursor inside world
     world->addChild(cursor_1);
     world->addChild(cursor_2);
     world->addChild(cursor_3);
     world->addChild(cursor_4);
+
+    // insert start point to world
+    world->addChild(startPoint);
 
     // add guide path trajectory into world
     world->addChild(guidePath);
@@ -475,6 +473,10 @@ int main(int argc, char* argv[])
     cursor_2->m_material->setYellow();
     cursor_3->m_material->setRed();
     cursor_4->m_material->setOrange(); 
+
+    // set start point color and transparency
+    startPoint->m_material->setGreen();
+    startPoint->setTransparencyLevel(0);
 
    
     //--------------------------------------------------------------------------
@@ -616,10 +618,12 @@ int main(int argc, char* argv[])
         trajectoryRead();
     }
 
+    // create start point cSphere
+    startPoint->setLocalPos(x_vec[0], y_vec[0], z_vec[0]);
     // Create guidePath line segment object
     double index0;
     double index1;
-    for (int i=0;i<(lines-2);i++){
+    for (int i=0;i<(counter-2);i++){
         // create vertex 0
             index0 = guidePath->newVertex(x_vec[i], y_vec[i], z_vec[i]);
             
@@ -649,8 +653,6 @@ int main(int argc, char* argv[])
         freqCounterGraphics.signal(1);
     }
 
-    
-
     // close window
     glfwDestroyWindow(window);
 
@@ -676,9 +678,9 @@ void trajectoryRead(void)
 
     }
     
-    std::string fileName = "logRead";
+    std::string inputfileName = "logRead";
     ifstream trajectoryFile;
-    trajectoryFile.open(string(homedir) + "/chai3d/" + fileName + ".m");
+    trajectoryFile.open(string(homedir) + "/chai3d/" + inputfileName + ".m");
     if (trajectoryFile.fail()) {
         cerr << "Error Opening Trajectory File, Check File Name" <<endl;
         exit(1);
@@ -723,7 +725,7 @@ void trajectoryRead(void)
     }
     counter = counter / 3;
     trajectoryFile.close();
-    std::cout << "Number of points in trajectory input file " << lines << std::endl;
+    std::cout << "Number of points in trajectory input file " << counter << std::endl;
 
 }
 
@@ -805,10 +807,14 @@ void keyCallback(GLFWwindow* a_window, int a_key, int a_scancode, int a_action, 
     else if (a_key == GLFW_KEY_1)
     {
         useForceField = !useForceField;
-        if (useForceField)
+        if (useForceField){
             cout << "> Enable force field     \n";
-        else
+            startPoint->setTransparencyLevel(0);
+        }
+        else{
             cout << "> Disable force field    \n";
+            startPoint->setTransparencyLevel(0.4);
+        }
     }
 
     // option - enable/disable trajectory recording
@@ -968,7 +974,6 @@ void updateHaptics(void)
     // simulation in now running
     simulationRunning  = true;
     simulationFinished = false;
-    cVector3d position;
     int loopCount = 0;
     // main haptic simulation loop
     while(simulationRunning)
@@ -977,8 +982,7 @@ void updateHaptics(void)
         // READ HAPTIC DEVICE
         /////////////////////////////////////////////////////////////////////
 
-        // grabs position and rotation data and creates vectors to assign it to
-        
+        // grabs position and rotation data and creates vectors to assign it to  
         hapticDevice->getPosition(position, position_2, position_3, position_4);
         cMatrix3d rotation, rotation_2, rotation_3, rotation_4;
         hapticDevice->getRotation(rotation, rotation_2, rotation_3, rotation_4);
@@ -989,15 +993,14 @@ void updateHaptics(void)
 
         if (showJoints){
         // update position and orientation of cursor_2 (last joint)
-
             cursor_2->setLocalPos(position_2);
             // cursor_2->setLocalRot(rotation_2);
-            // update position and orientation of middle joint
 
+            // update position and orientation of middle joint
             cursor_3->setLocalPos(position_3);
             // cursor_3->setLocalRot(rotation_3);
-            // update position and orientation of base 
 
+            // update position and orientation of base 
             cursor_4->setLocalPos(position_4);
             // cursor_4->setLocalRot(rotation_4);
 
@@ -1006,7 +1009,6 @@ void updateHaptics(void)
             jointRelationsFunc();
             }
         }
-
 
         //read linear velocity 
         cVector3d linearVelocity; 
@@ -1040,6 +1042,7 @@ void updateHaptics(void)
 
         // initializing minimum distance from haptic device
         double min = sqrt(pow(x_vec[0]-position.x(),2) + pow(y_vec[0]-position.y(),2) + pow(z_vec[0]-position.z(),2));
+
         // index of mininum-distance point
         int minIndex = 0;
 
@@ -1051,9 +1054,7 @@ void updateHaptics(void)
                     minIndex = i;
                 }
         }
-
-        
-            
+           
             //cVector3d currentPosition (position.x(),position.y(),position.z());
             double x_hold = position.x();
             double y_hold = position.y();
@@ -1091,7 +1092,7 @@ void updateHaptics(void)
         if (useForceField)
         {
             // compute linear force
-            double Kp = 25; // [N/m]
+            Kp = 25; // [N/m]
             cVector3d forceField = Kp * (desiredPosition - position);
             force.add(forceField);
 
@@ -1132,7 +1133,7 @@ void updateHaptics(void)
         loopCount = loopCount + 1;
 
         // sleep to set update rate at approximately 1000Hz
-         usleep(950);
+         usleep(925);
     }
     
     // exit haptics thread
